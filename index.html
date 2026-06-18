@@ -2,1107 +2,689 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <title>ぽれくゅ シミュレーター</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P1レース パルム記念杯</title>
     <style>
+        /* ── ネオンオレンジ × ダークテーマ ── */
         :root {
-            --bg-color: #0d0d0d;
-            --card-bg: #1a1a1a;
-            --accent-color: #ff4757;
-            --accent-green: #2ed573;
-            --accent-blue: #1e90ff;
-            --accent-gold: #ffd700;
-            --text-color: #f0f0f0;
-            --text-muted: #888;
-            --border-color: #2e2e2e;
+            --bg:        #0d0d0d;
+            --surface:   #161616;
+            --surface2:  #1e1e1e;
+            --border:    #2a2a2a;
+            --accent:    #ff8c42;
+            --accent-dk: #e06b20;
+            --accent-glow: rgba(255,140,66,0.25);
+            --text:      #f0f0f0;
+            --text-sub:  #ff8c42cc;
+            --odds-bg:   #1f1600;
+            --cond-bg:   #1a1200;
+            --bar-bg:    #222;
+            --bar-fill:  #ff8c42;
+            --card-top:  #ff8c42;
         }
+
         * { box-sizing: border-box; }
+
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
             margin: 0;
-            padding: 10px;
+            padding: 12px 14px 40px;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 15px;
+            line-height: 1.5;
         }
-        h1, h2, h3 { margin-top: 0; color: var(--text-color); }
+
         h1 {
-            font-size: 1.5rem;
-            text-align: center;
-            border-bottom: 2px solid var(--accent-color);
+            color: var(--accent);
+            border-bottom: 2px solid var(--accent);
             padding-bottom: 10px;
-            text-shadow: 0 0 10px rgba(255,71,87,0.5);
-            margin-bottom: 15px;
+            font-size: 1.3em;
+            margin: 0 0 16px;
+            text-shadow: 0 0 12px var(--accent-glow);
         }
-        h2 { font-size: 1.2rem; }
-        h3 { font-size: 1.1rem; }
-        button {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.2s;
-            font-size: 13px;
-        }
-        button:hover { background-color: #ff6b81; }
-        button.secondary { background-color: #57606f; }
-        button.secondary:hover { background-color: #747d8c; }
-        button:disabled { background-color: #444; cursor: not-allowed; opacity: 0.6; }
-        input[type="text"], input[type="number"], select, textarea {
-            background-color: #2f3542;
-            color: white;
-            border: 1px solid var(--border-color);
-            padding: 6px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .help-container {
-            background-color: #1a2238;
-            border: 1px solid #2b3b66;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            overflow: hidden;
-        }
-        .help-header {
-            background-color: #233154;
-            padding: 12px 15px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: bold;
-            user-select: none;
-        }
-        .help-content {
-            padding: 15px;
-            display: none;
-            border-top: 1px solid #2b3b66;
-            font-size: 13px;
-            line-height: 1.6;
-            color: #e0e6ed;
-        }
-        .help-content ul { margin: 5px 0 10px 0; padding-left: 20px; }
 
-        /* ===== レース設定パネル ===== */
-        .race-config-panel {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
+        h2 { font-size: 1.05em; color: var(--text); margin: 0 0 12px; }
+        h3 { font-size: 1em; margin: 0 0 10px; color: var(--accent); }
+
+        /* ── 設定セクション ── */
+        .config-section {
+            background: var(--surface);
             padding: 14px;
-            margin-bottom: 15px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 0 10px rgba(255,140,66,0.05);
         }
-        .race-config-grid {
+
+        .config-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
             gap: 10px;
-            margin-top: 10px;
         }
-        .config-item {
+
+        /* ── カードコンテナ：横スクロール対応 ── */
+        .container {
             display: flex;
-            flex-direction: column;
-            gap: 4px;
-            font-size: 13px;
-        }
-        .config-item label { color: var(--text-muted); font-size: 12px; }
-        .config-item select, .config-item input { width: 100%; }
-
-        /* ===== グリッドレイアウト ===== */
-        .grid-container {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        .panel {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 15px;
+            gap: 12px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x mandatory;
         }
 
-        /* ===== レーストラック ===== */
-        #race-track {
-            background: #2d5a27;
-            border: 4px solid var(--accent-color);
-            border-radius: 140px;
-            position: relative;
-            overflow: hidden;
-            margin-bottom: 10px;
-            height: 280px;
-            box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+        /* スクロールバーを細く */
+        .container::-webkit-scrollbar { height: 4px; }
+        .container::-webkit-scrollbar-track { background: var(--border); border-radius: 4px; }
+        .container::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+
+        .slime-card {
+            background: var(--surface);
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            border-top: 5px solid var(--card-top);
+            min-width: 200px;
+            flex-shrink: 0;
+            scroll-snap-align: start;
         }
-        #track-inner {
-            position: absolute;
-            background: #1e3f1a;
-            border-radius: 100px;
-            border: 2px solid rgba(255,255,255,0.2);
-        }
-        #goal-line {
-            position: absolute;
-            width: 5px;
-            background: repeating-linear-gradient(to bottom, #fff 0px, #fff 5px, #000 5px, #000 10px);
-            z-index: 5;
-        }
-        .horse-marker {
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            text-align: center;
-            font-size: 12px;
-            line-height: 24px;
+
+        /* ── フォーム要素 ── */
+        label {
+            display: block;
+            margin: 8px 0 3px;
+            font-size: 0.78em;
             font-weight: bold;
-            transform: translate(-50%, -50%);
-            transition: left 0.15s linear, top 0.15s linear;
-            z-index: 10;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.7);
-        }
-        .horse-name-tooltip {
-            position: absolute;
-            top: -24px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.8); color: #fff;
-            font-size: 11px; padding: 2px 5px; border-radius: 4px;
-            white-space: nowrap;
-            pointer-events: none;
+            color: var(--text-sub);
+            letter-spacing: 0.03em;
         }
 
-        @keyframes goalFlash {
-            0%   { box-shadow: 0 0 0px rgba(255,215,0,0); }
-            50%  { box-shadow: 0 0 20px rgba(255,215,0,1); }
-            100% { box-shadow: 0 0 0px rgba(255,215,0,0); }
-        }
-        .horse-marker.finished { animation: goalFlash 0.6s ease; z-index: 20; }
-        @keyframes raceFinishGlow {
-            0%  { border-color: var(--accent-color); }
-            50% { border-color: var(--accent-gold); box-shadow: inset 0 0 40px var(--accent-gold); }
-            100%{ border-color: var(--accent-color); }
-        }
-        #race-track.finished { animation: raceFinishGlow 0.8s ease 3; }
-
-        /* ===== 実況エリア ===== */
-        #commentary-box {
-            background: #0c1a0c;
-            border: 1px solid #1e5c1e;
-            border-radius: 6px;
-            padding: 10px 14px;
-            margin-bottom: 10px;
-            min-height: 48px;
-            font-size: 14px;
-            line-height: 1.6;
-            color: #b0ffb0;
-            font-weight: bold;
-        }
-        #commentary-box .phase-tag {
-            display: inline-block;
-            background: var(--accent-color);
-            color: white;
-            border-radius: 4px;
-            padding: 1px 7px;
-            font-size: 11px;
-            margin-right: 6px;
-        }
-
-        /* ===== 馬設定グリッド ===== */
-        .horse-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-        .horse-input-group { display: flex; align-items: center; gap: 5px; }
-
-        /* ===== ステータス表示 ===== */
-        .horse-status-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
-        .horse-status-table th {
-            background: #151515; color: var(--text-muted);
-            padding: 5px 4px; text-align: center; border-bottom: 1px solid var(--border-color); white-space: nowrap;
-        }
-        .horse-status-table td {
-            padding: 4px; text-align: center; border-bottom: 1px solid #1a1a1a; white-space: nowrap;
-        }
-        .horse-status-table tr:hover td { background: #1e1e1e; }
-        
-        .stat-grade { font-size: 15px; font-weight: bold; letter-spacing: -1px; }
-        .grade-sp { color: #ff4757; text-shadow: 0 0 8px #ff4757; }
-        .grade-s  { color: #ff6b81; } .grade-ap { color: #ff9f43; } .grade-a  { color: #ffd700; }
-        .grade-bp { color: #a3cb38; } .grade-b  { color: #2ed573; } .grade-cp { color: #1e90ff; }
-        .grade-c  { color: #70a1ff; } .grade-dp { color: #a29bfe; } .grade-d  { color: #6c5ce7; }
-        .grade-ep { color: #b2bec3; } .grade-e  { color: #95a5a6; } .grade-fp { color: #636e72; }
-        .grade-f  { color: #535c68; } .grade-gp { color: #485460; } .grade-g  { color: #2d3436; }
-
-        .condition-badge {
-            display: inline-block; padding: 3px 12px; border-radius: 12px; font-weight: bold; font-size: 11px;
-        }
-        .cond-perfect  { background: #ffd700; color: #000; } .cond-good { background: #2ed573; color: #000; }
-        .cond-normal   { background: #57606f; color: #fff; } .cond-poor { background: #ff9f43; color: #000; }
-        .cond-bad      { background: #ff4757; color: #fff; }
-        .cond-devil    { background: linear-gradient(90deg,#ff4757,#a29bfe,#2ed573); color: #fff; animation: devilPulse 1.5s infinite; }
-        @keyframes devilPulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.4); } }
-
-        /* ===== ベットテーブル ===== */
-        .table-responsive { width: 100%; overflow-x: auto; border: 1px solid var(--border-color); border-radius: 4px; }
-        .bet-table { width: 100%; border-collapse: collapse; min-width: 600px; }
-        .bet-table th, .bet-table td { border-bottom: 1px solid var(--border-color); padding: 8px; text-align: left; }
-        .bet-table th { background-color: #151515; color: var(--text-muted); font-size: 13px; }
-        
-        .result-box {
-            background-color: #181818; border-left: 4px solid var(--accent-green); padding: 15px;
-            margin-top: 10px; border-radius: 0 4px 4px 0;
-        }
-        .log-area {
-            height: 150px; overflow-y: auto; background-color: #0d0d0d; border: 1px solid var(--border-color);
-            padding: 10px; font-family: monospace; font-size: 12px; border-radius: 4px;
-        }
-        .rank-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-weight: bold; margin-right: 5px; }
-        .rank-1 { background-color: #ffd700; color: black; }
-        .rank-2 { background-color: #c0c0c0; color: black; }
-        .rank-3 { background-color: #cd7f32; color: black; }
-        .rank-other { background-color: #444; color: white; }
-
-        /* 着順テーブル用スタイル */
-        .full-ranking-table {
+        input, select, option {
             width: 100%;
-            margin-top: 15px;
-            border-collapse: collapse;
-            font-size: 12px;
-        }
-        .full-ranking-table th { background: #222; color: #aaa; padding: 6px; text-align: center; }
-        .full-ranking-table td { padding: 6px; text-align: center; border-bottom: 1px solid #2a2a2a; }
-        
-        .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-        .config-row {
-            background: #1e1e1e; padding: 10px 12px; border-radius: 6px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px;
+            padding: 7px 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            color: #ffffff;
+            font-size: 0.92em;
+            -webkit-appearance: none;
+            appearance: none;
         }
 
-        /* マップ情報 */
-        .map-info {
-            background: #0d1a2a; border: 1px solid #1a3a5c; border-radius: 6px; padding: 10px 14px;
-            font-size: 12px; margin-bottom: 10px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+        option {
+            background: var(--surface2);
+            color: #ffffff;
+            width: auto;
         }
-        .map-info .map-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-        .map-info .map-label { color: var(--text-muted); font-size: 10px; }
-        .map-info .map-value { font-weight: bold; color: #74b9ff; }
 
-        /* ===== 運営・裏設定用アコーディオン ===== */
-        .admin-accordion {
-            background-color: #1c1313;
-            border: 1px solid #442222;
-            border-radius: 8px;
-            margin-top: 25px;
-            overflow: hidden;
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23ff8c42'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 28px;
         }
-        .admin-header {
-            background-color: #2d1818;
-            padding: 12px 15px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+
+        .odds-input  { background: var(--odds-bg); color: #ffffff; }
+        .condition-select { background: var(--cond-bg); font-weight: bold; color: #ffffff; }
+
+        /* ── ボタン ── */
+        button {
+            background: transparent;
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            padding: 14px 20px;
+            font-size: 1.1em;
             font-weight: bold;
-            color: #ff6b81;
-            user-select: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 18px;
+            width: 100%;
+            display: block;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+            box-shadow: 0 0 12px var(--accent-glow), inset 0 0 12px var(--accent-glow);
+            text-shadow: 0 0 8px var(--accent);
         }
-        .admin-content {
-            padding: 15px;
-            display: none;
-            border-top: 1px solid #442222;
+        button:hover  {
+            background: var(--accent);
+            color: #000;
+            box-shadow: 0 0 22px var(--accent), inset 0 0 8px rgba(255,255,255,0.1);
+            text-shadow: none;
+        }
+        button:active { transform: translateY(1px); }
+
+        /* ── 結果エリア ── */
+        #results {
+            margin-top: 18px;
+            background: var(--surface);
+            padding: 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            box-shadow: 0 0 10px rgba(255,140,66,0.05);
         }
 
-        @media (min-width: 768px) {
-            body { padding: 20px; }
-            h1 { font-size: 2rem; }
-            .grid-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-            .horse-grid { grid-template-columns: repeat(4, 1fr); }
-            .panel { padding: 20px; }
-            .race-config-grid { grid-template-columns: repeat(4, 1fr); }
+        .result-item { margin-bottom: 14px; }
+        .result-label { font-size: 0.92em; margin-bottom: 4px; }
+        .result-bar {
+            background: var(--bar-bg);
+            border-radius: 6px;
+            overflow: hidden;
+            height: 32px;
+            display: flex;
+        }
+        .result-fill {
+            background: var(--bar-fill);
+            min-width: 2px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            padding-left: 10px;
+            color: #000;
+            font-weight: bold;
+            font-size: 0.88em;
+            transition: width 0.4s ease;
+            box-shadow: 2px 0 10px var(--accent-glow);
+        }
+
+        /* ── お知らせ欄 ── */
+        .news-section {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-left: 4px solid var(--accent);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+        .news-section h3 {
+            margin: 0 0 6px;
+            font-size: 0.85em;
+            letter-spacing: 0.05em;
+            color: var(--accent);
+            text-shadow: 0 0 8px var(--accent-glow);
+        }
+        .news-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .news-list li {
+            font-size: 0.85em;
+            color: var(--text);
+            padding: 3px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .news-list li:last-child { border-bottom: none; }
+        .news-date {
+            color: var(--accent);
+            font-weight: bold;
+            margin-right: 8px;
+            font-size: 0.9em;
+        }
+
+        /* ── レスポンシブ：幅広い画面ではカードを折り返す ── */
+        @media (min-width: 700px) {
+            body { padding: 20px 24px 60px; }
+            .container { flex-wrap: wrap; overflow-x: visible; }
+            .slime-card { min-width: 210px; }
+            button { max-width: 420px; }
         }
     </style>
 </head>
 <body>
-    <h1>🏆 P1レース パルム記念杯</h1>
 
-    <div class="help-container">
-        <div class="help-header" onclick="toggleHelp()">
-            <span>📖 ツールの遊び方・使い方ガイド (クリックで開閉)</span>
-            <span id="help-icon">▼</span>
-        </div>
-        <div class="help-content" id="help-content">
-            <strong>【基本の流れ】</strong>
-            <ol>
-                <li><strong>馬名の設定：</strong>「① 出走馬の設定」で12頭の名前を決め、馬ステータスを生成します。</li>
-                <li><strong>レース条件設定：</strong>天候・前日天気・コース距離を選びます。ステータスと合わせて予想の参考に。</li>
-                <li><strong>ベット受付：</strong>リスナーの投票内容を「② 投票(ベット)管理」に入力します。複数点賭けも可能です。</li>
-                <li><strong>レース開始：</strong>「レース開始」を押すと約1〜1分30秒かけてレースが進行し、実況が流れます。</li>
-                <li><strong>結果確認：</strong>ゴール後に着順・配当・ログが自動更新されます。</li>
-            </ol>
-        </div>
+    <div class="news-section">
+        <h3>📢 お知らせ</h3>
+        <ul class="news-list">
+            <li><span class="news-date">6/18</span>限定キャラを追加、キャラのステータスなどの追加</li>
+            <li><span class="news-date">6/18</span>シミュレーター精度改善：クリティカル率・スキル発動・毒・睡眠・ダメージ計算などを修正</li>
+        </ul>
     </div>
 
-    <div class="race-config-panel">
-        <div class="flex-between">
-            <h3 style="margin:0;">🌤 レース条件設定</h3>
-            <span id="condition-summary" style="font-size:12px; color:var(--text-muted);"></span>
-        </div>
-        <div class="race-config-grid">
-            <div class="config-item">
-                <label>今日の天候</label>
-                <select id="weather-today" onchange="updateConditionSummary()">
-                    <option value="sunny">☀️ 晴天</option>
-                    <option value="cloudy">⛅ くもり</option>
-                    <option value="rain">🌧 雨</option>
-                </select>
-            </div>
-            <div class="config-item">
-                <label>前日の天気</label>
-                <select id="weather-yesterday" onchange="updateConditionSummary()">
-                    <option value="sunny">☀️ 晴天</option>
-                    <option value="shower">🌦 通り雨</option>
-                    <option value="rain">🌧 雨</option>
-                </select>
-            </div>
-            <div class="config-item">
-                <label>コース距離</label>
-                <select id="race-distance" onchange="updateConditionSummary()">
-                    <option value="1200">1200m（スプリント）</option>
-                    <option value="1600" selected>1600m（マイル）</option>
-                    <option value="2000">2000m（中距離）</option>
-                    <option value="2400">2400m（長距離）</option>
-                    <option value="3000">3000m（超長距離）</option>
-                </select>
-            </div>
-            <div class="config-item">
-                <label>コース特性（ランダム）</label>
-                <div id="course-features" style="font-size:12px; padding:6px; background:#111; border-radius:4px; min-height:30px;"></div>
-            </div>
-        </div>
-        <div style="margin-top:10px; text-align:right;">
-            <button class="secondary" onclick="rollCourseFeatures()" style="font-size:12px; padding:5px 12px;">🎲 コース特性を振り直す</button>
-        </div>
-    </div>
+    <h1>🏆 ぽれくゅ シミュレーター</h1>
 
-    <div class="grid-container">
-        <div style="display: flex; flex-direction: column; gap: 15px;">
-
-            <div class="panel">
-                <div class="flex-between" style="margin-bottom: 8px;">
-                    <h2>🏇 メインレース映像</h2>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <button id="start-btn" onclick="startRace()">▶ レース開始（自動）</button>
-                    </div>
-                </div>
-
-                <div class="map-info" id="map-info-bar">
-                    <div class="map-item"><span class="map-label">距離</span><span class="map-value" id="info-distance">1600m</span></div>
-                    <div class="map-item"><span class="map-label">天候</span><span class="map-value" id="info-weather">☀️ 晴天</span></div>
-                    <div class="map-item"><span class="map-label">馬場</span><span class="map-value" id="info-track">良</span></div>
-                    <div class="map-item"><span class="map-label">特性</span><span class="map-value" id="info-features">-</span></div>
-                </div>
-
-                <div id="commentary-box">
-                    <span class="phase-tag">待機中</span>レースの準備が整いました。「レース開始」を押してください。
-                </div>
-
-                <div id="race-track">
-                    <div id="track-inner"></div>
-                    <div id="goal-line"></div>
-                </div>
-            </div>
-
-            <div class="panel">
-                <div class="flex-between" style="margin-bottom: 10px;">
-                    <h3>① 出走馬の設定 (12頭立て)</h3>
-                    <div style="display:flex; gap:6px;">
-                        <button class="secondary" onclick="loadPreset()">プリセット入力</button>
-                        <button class="secondary" onclick="generateAllStatus()">🎲 ステータス生成</button>
-                    </div>
-                </div>
-                <div class="horse-grid" id="horse-inputs-container"></div>
-            </div>
-
-            <div class="panel" id="status-list-panel">
-                <div class="flex-between" style="margin-bottom:8px;">
-                    <h3>📊 出走馬ステータス一覧</h3>
-                </div>
-                <div class="table-responsive">
-                    <table class="horse-status-table">
-                        <thead>
-                            <tr>
-                                <th>馬番</th>
-                                <th>馬名</th>
-                                <th>調子</th>
-                                <th>スピード</th>
-                                <th>スタミナ</th>
-                                <th>根性</th>
-                                <th>瞬発力</th>
-                                <th>パワー</th>
-                                <th>健康</th>
-                                <th>賢さ</th>
-                                <th>精神力</th>
-                                <th>柔軟性</th>
-                            </tr>
-                        </thead>
-                        <tbody id="status-tbody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="panel">
-                <div class="flex-between">
-                    <h3>② 投票(ベット)管理</h3>
-                    <button class="secondary" onclick="addBetRow()">＋ 行を追加</button>
-                </div>
-                <div class="table-responsive">
-                    <table class="bet-table">
-                        <thead>
-                            <tr>
-                                <th style="width:25%;">プレイヤー名</th>
-                                <th style="width:15%;">賭け金(円)</th>
-                                <th style="width:20%;">賭け方</th>
-                                <th style="width:25%;">予想(馬番)</th>
-                                <th style="width:15%;">過去連勝数</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bet-rows-container"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div style="display: flex; flex-direction: column; gap: 15px;">
-            <div class="panel">
-                <h3>③ レース結果発表</h3>
-                <div id="result-display" style="min-height: 60px;">
-                    <p style="color: var(--text-muted); font-size: 13px;">レースが終了するとここに結果と配当が表示されます。</p>
-                </div>
-            </div>
-            <div class="panel">
-                <h3>④ 過去の当選者履歴ログ</h3>
-                <div class="log-area" id="log-area">履歴はありません。</div>
-            </div>
-            <div class="panel">
-                <h3>運営用メモ欄</h3>
-                <textarea id="admin-memo" style="width:100%; height:100px; resize:vertical;" placeholder="配信状況や、次回持ち越しメモなど自由にご活用ください。"></textarea>
-            </div>
-        </div>
-    </div>
-
-    <div class="admin-accordion">
-        <div class="admin-header" onclick="toggleAdminPanel()">
-            <span>⚙️ 配信者用裏設定：【結果直接指定】コントロール (クリックで開閉)</span>
-            <span id="admin-icon">▼</span>
-        </div>
-        <div class="admin-content" id="admin-content">
-            <div class="config-row">
-                <span style="font-weight: bold; color: var(--accent-color);">【結果直接指定】</span>
-                <div>
-                    1着:<input type="number" id="res-1st" min="1" max="12" style="width:45px;" value="1">
-                    2着:<input type="number" id="res-2nd" min="1" max="12" style="width:45px;" value="2">
-                    3着:<input type="number" id="res-3rd" min="1" max="12" style="width:45px;" value="3">
-                </div>
-                <button class="secondary" onclick="startRaceWithResult()">この着順で開始（裏レース実行）</button>
-            </div>
-        </div>
-    </div>
-
-<script>
-const PRESET_HORSES = [
-    "アーモンドラム", "ワケタキャップ", "キーチクンシップ", "カナタンインパクト",
-    "ミジュキンブラック", "チュイレントスズカ", "ユキシロックイーン", "ニシナリルドルフ",
-    "オレフェーベル", "ナイスライチャ", "エアグジューヴ", "コジキンドルパサー"
-];
-
-const GRADES = ['S+','S','A+','A','B+','B','C+','C','D+','D','E+','E','F+','F','G+','G'];
-const GRADE_CLASS = ['grade-sp','grade-s','grade-ap','grade-a','grade-bp','grade-b',
-    'grade-cp','grade-c','grade-dp','grade-d','grade-ep','grade-e',
-    'grade-fp','grade-f','grade-gp','grade-g'];
-
-const STAT_NAMES = ['スピード','スタミナ','根性','瞬発力','パワー','健康','賢さ','精神力','柔軟性'];
-
-const CONDITION_LIST = [
-    { key:'perfect', label:'絶好調', cls:'cond-perfect', boosts:2, boostMult:1.30, drops:0, dropMult:1 },
-    { key:'good',    label:'好調',   cls:'cond-good',    boosts:1, boostMult:1.30, drops:0, dropMult:1 },
-    { key:'normal',  label:'普通',   cls:'cond-normal',  boosts:0, boostMult:1,    drops:0, dropMult:1 },
-    { key:'poor',    label:'不調',   cls:'cond-poor',    boosts:0, boostMult:1,    drops:1, dropMult:0.9 },
-    { key:'bad',     label:'絶不調', cls:'cond-bad',     boosts:0, boostMult:1,    drops:2, dropMult:0.8 },
-    { key:'devil',   label:'悪魔的', cls:'cond-devil',   boosts:0, boostMult:1,    drops:0, dropMult:1 },
-];
-const CONDITION_WEIGHTS = [10, 20, 40, 20, 8, 2];
-
-const HORSE_COLORS = [
-    '#e74c3c','#e67e22','#f39c12','#27ae60','#16a085','#2980b9',
-    '#8e44ad','#d35400','#c0392b','#1abc9c','#2ecc71','#3498db'
-];
-
-let isRacing = false;
-let finalRankings = [];
-let horseStatuses = {}; 
-let courseFeatures = { uphill: false, wind: false };
-
-window.onload = function() {
-    initHorses();
-    initLanes();
-    initBets();
-    rollCourseFeatures();
-    updateConditionSummary();
-    generateAllStatus();
-    
-    window.addEventListener('resize', () => {
-        drawTrackStatic();
-        if(!isRacing) resetHorsePositions();
-    });
-};
-
-function toggleHelp() {
-    const content = document.getElementById('help-content');
-    const icon = document.getElementById('help-icon');
-    content.style.display = (content.style.display === 'block') ? 'none' : 'block';
-    icon.innerText = (content.style.display === 'block') ? '▲' : '▼';
-}
-
-function toggleAdminPanel() {
-    const content = document.getElementById('admin-content');
-    const icon = document.getElementById('admin-icon');
-    content.style.display = (content.style.display === 'block') ? 'none' : 'block';
-    icon.innerText = (content.style.display === 'block') ? '▲' : '▼';
-}
-
-function initHorses() {
-    const container = document.getElementById('horse-inputs-container');
-    container.innerHTML = '';
-    for (let i = 1; i <= 12; i++) {
-        const div = document.createElement('div');
-        div.className = 'horse-input-group';
-        div.innerHTML = `
-            <span style="color:var(--accent-color);font-weight:bold;font-size:13px;width:15px;">${i}:</span>
-            <input type="text" id="horse-name-${i}" value="ウマ${i}" style="width:100%;" oninput="updateLaneLabels()">
-        `;
-        container.appendChild(div);
-    }
-}
-
-function loadPreset() {
-    for (let i = 1; i <= 12; i++) {
-        const input = document.getElementById(`horse-name-${i}`);
-        input.value = (i <= PRESET_HORSES.length) ? PRESET_HORSES[i-1] : `デフォルトウマ${i}`;
-    }
-    updateLaneLabels();
-    generateAllStatus();
-}
-
-function updateLaneLabels() {
-    for (let i = 1; i <= 12; i++) {
-        const name = document.getElementById(`horse-name-${i}`).value || `ウマ${i}`;
-        const label = document.getElementById(`horse-tooltip-${i}`);
-        if (label) label.innerText = name;
-    }
-}
-
-function initLanes() {
-    const container = document.getElementById('race-track');
-    container.querySelectorAll('.horse-marker').forEach(e => e.remove());
-
-    for (let i = 1; i <= 12; i++) {
-        const horse = document.createElement('div');
-        horse.className = 'horse-marker';
-        horse.id = `horse-sprite-${i}`;
-        horse.style.backgroundColor = HORSE_COLORS[i-1];
-        horse.style.color = i <= 6 ? '#000' : '#fff';
-        horse.innerHTML = `${i}<div class="horse-name-tooltip" id="horse-tooltip-${i}">ウマ${i}</div>`;
-        container.appendChild(horse);
-    }
-    updateLaneLabels();
-    drawTrackStatic();
-    resetHorsePositions();
-}
-
-function drawTrackStatic() {
-    const track = document.getElementById('race-track');
-    const width = track.clientWidth;
-    const height = track.clientHeight;
-    const CX_R = width - height / 2;
-    const minR = 40;
-    const maxR = height / 2 - 15;
-
-    const goal = document.getElementById('goal-line');
-    if (goal) {
-        goal.style.left = `${CX_R}px`;
-        goal.style.top = `${height/2 - maxR}px`;
-        goal.style.height = `${maxR - minR}px`;
-    }
-    
-    const inner = document.getElementById('track-inner');
-    if(inner) {
-        inner.style.left = `${height/2}px`;
-        inner.style.right = `${height/2}px`;
-        inner.style.top = `${height/2 - minR}px`;
-        inner.style.bottom = `${height/2 - minR}px`;
-    }
-}
-
-function getTrackPosition(p, laneIndex, width, height) {
-    const CY = height / 2;
-    const CX_L = height / 2;
-    const CX_R = width - height / 2;
-    const straightLen = Math.max(0, CX_R - CX_L);
-
-    const minR = 40;
-    const maxR = height / 2 - 15;
-    const r = minR + (maxR - minR) * (laneIndex / 11);
-
-    const curveLen = Math.PI * r;
-    const totalLen = 2 * straightLen + 2 * curveLen;
-
-    let d = Math.min(p * totalLen, totalLen);
-    let x, y;
-
-    if (d <= straightLen) { 
-        x = CX_R - d; y = CY - r;
-    } else if (d <= straightLen + curveLen) { 
-        const prog = (d - straightLen) / curveLen;
-        const angle = -Math.PI/2 - prog * Math.PI;
-        x = CX_L + r * Math.cos(angle); y = CY + r * Math.sin(angle);
-    } else if (d <= 2 * straightLen + curveLen) { 
-        const prog = d - straightLen - curveLen;
-        x = CX_L + prog; y = CY + r;
-    } else { 
-        const prog = (d - 2 * straightLen - curveLen) / curveLen;
-        const angle = Math.PI/2 - prog * Math.PI;
-        x = CX_R + r * Math.cos(angle); y = CY + r * Math.sin(angle);
-    }
-    return { x, y };
-}
-
-function resetHorsePositions() {
-    const track = document.getElementById('race-track');
-    for (let i = 1; i <= 12; i++) {
-        const sprite = document.getElementById(`horse-sprite-${i}`);
-        if (sprite) {
-            sprite.classList.remove('finished');
-            const pos = getTrackPosition(0, i - 1, track.clientWidth, track.clientHeight);
-            sprite.style.left = `${pos.x}px`;
-            sprite.style.top = `${pos.y}px`;
-        }
-    }
-}
-
-function rollCourseFeatures() {
-    courseFeatures.uphill = Math.random() < 0.4;
-    courseFeatures.wind   = Math.random() < 0.35;
-    const featureEl = document.getElementById('course-features');
-    const infoFeatures = document.getElementById('info-features');
-    let feats = [];
-    if (courseFeatures.uphill) feats.push('⛰ 坂あり');
-    if (courseFeatures.wind)   feats.push('💨 強風');
-    if (feats.length === 0)    feats.push('フラット');
-    featureEl.innerHTML = feats.map(f => `<span style="margin-right:8px;">${f}</span>`).join('');
-    infoFeatures.textContent = feats.join(' / ');
-    updateConditionSummary();
-}
-
-function updateConditionSummary() {
-    const today = document.getElementById('weather-today').value;
-    const yesterday = document.getElementById('weather-yesterday').value;
-    const dist = document.getElementById('race-distance').value;
-
-    document.getElementById('info-distance').textContent = dist + 'm';
-    const weatherLabels = { sunny:'☀️ 晴天', cloudy:'⛅ くもり', rain:'🌧 雨' };
-    document.getElementById('info-weather').textContent = weatherLabels[today] || '-';
-
-    let trackState = '良';
-    if (today === 'rain') trackState = '不良';
-    else if (today === 'cloudy' && yesterday === 'rain') trackState = '稍重';
-    else if (yesterday === 'rain') trackState = '重';
-    else if (yesterday === 'shower') trackState = '稍重';
-    document.getElementById('info-track').textContent = trackState;
-
-    let upsetRisk = '低';
-    if (today === 'rain' || yesterday === 'rain') upsetRisk = '高';
-    else if (today === 'cloudy' && yesterday === 'shower') upsetRisk = '中';
-
-    document.getElementById('condition-summary').textContent = `荒れリスク：${upsetRisk} / 馬場：${trackState}`;
-}
-
-function weightedRandom(weights) {
-    const total = weights.reduce((a,b) => a+b, 0);
-    let r = Math.random() * total;
-    for (let i = 0; i < weights.length; i++) {
-        r -= weights[i];
-        if (r <= 0) return i;
-    }
-    return weights.length - 1;
-}
-
-function randomGradeIndex() {
-    const roll = Math.floor(Math.random() * 16) + Math.floor(Math.random() * 16);
-    return Math.min(15, Math.floor(roll / 2));
-}
-
-function generateHorseStatus(horseNum) {
-    const baseStats = {};
-    STAT_NAMES.forEach(name => { baseStats[name] = randomGradeIndex(); });
-
-    const condIdx = weightedRandom(CONDITION_WEIGHTS);
-    const condition = CONDITION_LIST[condIdx];
-    const effectiveStats = { ...baseStats };
-
-    if (condition.key === 'devil') {
-        const displayStats = { ...baseStats };
-        const changeCnt = Math.floor(Math.random() * 5) + 1;
-        for (let c = 0; c < changeCnt; c++) {
-            const statName = STAT_NAMES[Math.floor(Math.random() * STAT_NAMES.length)];
-            const delta = Math.random() < 0.5 ? -Math.floor(Math.random() * 6) : Math.floor(Math.random() * 6);
-            displayStats[statName] = Math.max(0, Math.min(15, (displayStats[statName] || 0) + delta));
-        }
-        horseStatuses[horseNum] = { baseStats: displayStats, condition, effectiveStats };
-        return;
-    }
-
-    if (condition.boosts > 0) {
-        const statsCopy = [...STAT_NAMES];
-        for (let b = 0; b < condition.boosts; b++) {
-            const idx = Math.floor(Math.random() * statsCopy.length);
-            const sn = statsCopy.splice(idx, 1)[0];
-            effectiveStats[sn] = Math.min(15, Math.max(0, Math.floor(effectiveStats[sn] * condition.boostMult)));
-        }
-    }
-    if (condition.drops > 0) {
-        const statsCopy = [...STAT_NAMES];
-        for (let d = 0; d < condition.drops; d++) {
-            const idx = Math.floor(Math.random() * statsCopy.length);
-            const sn = statsCopy.splice(idx, 1)[0];
-            effectiveStats[sn] = Math.min(15, Math.max(0, Math.floor(effectiveStats[sn] * condition.dropMult)));
-        }
-    }
-    horseStatuses[horseNum] = { baseStats, condition, effectiveStats };
-}
-
-function generateAllStatus() {
-    for (let i = 1; i <= 12; i++) { generateHorseStatus(i); }
-    renderStatusTable();
-}
-
-function renderStatusTable() {
-    const tbody = document.getElementById('status-tbody');
-    tbody.innerHTML = '';
-    for (let i = 1; i <= 12; i++) {
-        const name = document.getElementById(`horse-name-${i}`).value || `ウマ${i}`;
-        const st = horseStatuses[i];
-        if (!st) continue;
-        const cond = st.condition;
+    <div class="config-section">
+        <h3>🌍 ステージ設定 ＆ 参加人数 ＆ 回数</h3>
+        <div class="config-grid">
+        <div><label>ステージ</label>
+        <select id="stage-select">
+            <option value="normal">その他（通常）</option>
+            <option value="grass">草原</option>
+            <option value="volcano">火山</option>
+        </select></div>
         
-        const statsHtml = STAT_NAMES.map(statName => {
-            const gradeIdx = st.baseStats[statName];
-            return `<td><span class="stat-grade ${GRADE_CLASS[gradeIdx]}">${GRADES[gradeIdx]}</span></td>`;
-        }).join('');
+        <div><label style="margin-top:0;">対戦人数</label>
+        <select id="player-count" onchange="toggleCards()">
+            <option value="2">2体</option>
+            <option value="3" selected>3体</option>
+            <option value="4">4体</option>
+            <option value="5">5体</option>
+        </select></div>
 
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td style="font-weight:bold; color:var(--accent-color);">${i}</td>
-            <td style="max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${name}</td>
-            <td><span class="condition-badge ${cond.cls}">${cond.label}</span></td>
-            ${statsHtml}
-        `;
-        tbody.appendChild(tr);
-    }
-}
+        <div><label style="margin-top:0;">シミュレート回数</label>
+        <select id="sim-count">
+            <option value="1">1回</option>
+            <option value="10">10回</option>
+            <option value="100" selected>100回</option>
+            <option value="1000">1000回</option>
+        </select></div>
+        </div>
+    </div>
 
-function calcHorseScore(horseNum) {
-    const st = horseStatuses[horseNum];
-    if (!st) return 0.5 + Math.random() * 0.5;
+    <div class="container" id="cards-container">
+        </div>
 
-    const es = st.effectiveStats;
-    const today = document.getElementById('weather-today').value;
-    const yesterday = document.getElementById('weather-yesterday').value;
-    const dist = parseInt(document.getElementById('race-distance').value);
+    <button onclick="runSimulation()">🔥 シミュレートを実行！</button>
 
-    let score = (15 - (es['スピード'] || 8)) * 3.0;
-    const distanceFactor = dist / 1600;
-    score += (15 - (es['スタミナ'] || 8)) * distanceFactor * 1.2;
-    score += (15 - (es['柔軟性'] || 8)) * (distanceFactor > 1 ? 0.5 : 0.2);
+    <div id="results" style="display:none;">
+        <h2>📊 【おすすめ順】1位になった回数が多いキャラ</h2>
+        <div id="results-list"></div>
+    </div>
 
-    const isWetTrack = (today === 'rain') || (yesterday === 'rain') || (today === 'cloudy' && yesterday === 'shower');
-    if (isWetTrack) score += (15 - (es['パワー'] || 8)) * 1.5;
-    if (courseFeatures.uphill) score += (15 - (es['パワー'] || 8)) * 0.8;
-    if (courseFeatures.wind)   score += (15 - (es['精神力'] || 8)) * 0.6;
+    <script>
+        // キャラクターマスターデータ
+        const CHARACTER_DATABASE = {
+            "custom": { name: "カスタム入力", hp: 15, atk: 12, def: 6, spd: 20, crit: 5, type: "物理", target: "均等", skill: "none" },
+            "mokemaru_p": { name: "モケマル(ピンク)", hp: 17, atk: 10, def: 7, spd: 15, crit: 5, type: "魔族,魔法", target: "力自慢", skill: "hanakagura_p" },
+            "mokemaru": { name: "モケマル", hp: 17, atk: 10, def: 7, spd: 15, crit: 5, type: "魔族,魔法", target: "力自慢", skill: "hanakagura" },
+            "warbit": { name: "ワルビット", hp: 14, atk: 12, def: 8, spd: 22, crit: 8, type: "魔族,物理", target: "弱者", skill: "mukimukin" },
+            "yuve": { name: "ユーベェ", hp: 9, atk: 14, def: 9, spd: 36, crit: 5, type: "魔法,魔族", target: "強者", skill: "kanashibaru" },
+            "liaerd": { name: "ライアード", hp: 15, atk: 14, def: 9, spd: 28, crit: 5, type: "魔法", target: "とどめ", skill: "daichi" },
+            "atlan": { name: "アトラン", hp: 17, atk: 17, def: 8, spd: 48, crit: 5, type: "物理", target: "強者", skill: "gaogao" },
+            "achagara": { name: "アチャガラ", hp: 18, atk: 13, def: 8, spd: 26, crit: 10, type: "物理", target: "鉄壁", skill: "zubazuban" },
+            "guardian": { name: "ガーディアン", hp: 14, atk: 14, def: 18, spd: 14, crit: 5, type: "物理,物理耐性", target: "力自慢", skill: "funyamukin" },
+            "buruta": { name: "ぶる太ライダー", hp: 15, atk: 13, def: 7, spd: 40, crit: 3, type: "物理", target: "弱者", skill: "refresh" },
+            "gargoi": { name: "ガーゴイ", hp: 13, atk: 14, def: 7, spd: 38, crit: 5, type: "魔族,魔法", target: "元気", skill: "dokuruto" },
+            "gragon": { name: "グラゴン", hp: 25, atk: 26, def: 3, spd: 2, crit: 3, type: "物理,魔族,鈍足回避", target: "韋駄天", skill: "pitapitan" },
+            "chuhei": { name: "チューヘイさん", hp: 12, atk: 14, def: 6, spd: 30, crit: 8, type: "物理", target: "力自慢", skill: "tsukikuzushi" },
+            "dranyan": { name: "ドラニャン", hp: 16, atk: 16, def: 10, spd: 19, crit: 5, type: "魔族,魔法", target: "とどめ", skill: "dranyan_skill" },
+            "bercha": { name: "ベルチャ", hp: 12, atk: 13, def: 9, spd: 18, crit: 25, type: "魔族,魔法", target: "力自慢", skill: "onemu" },
+            "mahobit": { name: "マホビット", hp: 15, atk: 11, def: 7, spd: 20, crit: 3, type: "魔族,魔法", target: "鉄壁", skill: "fire" },
+            "pulldog": { name: "プルドッグ", hp: 15, atk: 13, def: 1, spd: 39, crit: 5, type: "物理", target: "韋駄天", skill: "purupuru" },
+            "snowdrop": { name: "スノードロップ", hp: 13, atk: 5, def: 7, spd: 22, crit: 5, type: "魔法,魔族", target: "鉄壁", skill: "piyolto" },
+            "miraknight": { name: "ミラナイト", hp: 11, atk: 20, def: 11, spd: 12, crit: 7, type: "物理", target: "とどめ", skill: "kibikibin" },
+            "lafree": { name: "ラフリィ", hp: 1, atk: 1, def: 1, spd: 90, crit: 0, type: "無", target: "弱者", skill: "lucky" },
+            "orc": { name: "オーク", hp: 20, atk: 18, def: 4, spd: 4, crit: 5, type: "物理", target: "弱者", skill: "none" },
+            "golem": { name: "ゴーレム", hp: 11, atk: 16, def: 13, spd: 8, crit: 7, type: "物理", target: "力自慢", skill: "kachikochin" },
+            "freku": { name: "フレクー", hp: 14, atk: 10, def: 10, spd: 16, crit: 7, type: "物理", target: "元気", skill: "oyatsu" },
+            "yamikuma": { name: "ヤミクマ", hp: 20, atk: 16, def: 12, spd: 17, crit: 3, type: "魔法,魔族", target: "均等", skill: "nightmare" },
+            "slapon": { name: "スラポン", hp: 14, atk: 12, def: 6, spd: 24, crit: 5, type: "魔族,魔法", target: "強者", skill: "funyarto" },
+            "walta": { name: "cpt.ワル太", hp: 16, atk: 15, def: 8, spd: 34, crit: 7, type: "物理,魔族", target: "弱者", skill: "shibilto" },
+            "rutopen": { name: "ルトペン", hp: 17, atk: 16, def: 4, spd: 6, crit: 5, type: "魔族,物理,魔法耐性", target: "魔族", skill: "burelto" },
+            // 限定キャラ
+            "k_achagara": { name: "黒華アチャガラ", hp: 19, atk: 14, def: 9, spd: 26, crit: 10, type: "物理", target: "鉄壁", skill: "zubazuban", limited: true },
+            "k_gargoi": { name: "黒華ガーゴイ", hp: 16, atk: 15, def: 8, spd: 38, crit: 5, type: "魔族,魔法", target: "元気", skill: "dokuruto", limited: true },
+            "k_warbit": { name: "黒華ワルビット", hp: 17, atk: 14, def: 9, spd: 22, crit: 6, type: "物理,魔族", target: "弱者", skill: "mukimukin", limited: true },
+            "k_golem": { name: "ジュエリーゴーレム", hp: 16, atk: 16, def: 15, spd: 8, crit: 7, type: "物理", target: "力自慢", skill: "kirakiran", limited: true },
+            "k_snowdrop": { name: "薔影スノードロップ", hp: 17, atk: 5, def: 8, spd: 32, crit: 5, type: "魔法,魔族", target: "鉄壁", skill: "piyolto", limited: true },
+            "k_bercha": { name: "龐狼ベルチャ", hp: 14, atk: 15, def: 16, spd: 18, crit: 25, type: "魔族,魔法", target: "力自慢", skill: "onemu", limited: true },
+            "k_guardian": { name: "メイクアップガーディアン", hp: 17, atk: 14, def: 19, spd: 14, crit: 5, type: "物理,物理耐性", target: "力自慢", skill: "medikaran", limited: true }
+        };
 
-    const wisdomFactor = (15 - (es['賢さ'] || 8)) / 15;
-    score += (Math.random() - 0.5) * (8 + wisdomFactor * 6);
-
-    return Math.max(0, score);
-}
-
-function calcRaceOrder() {
-    const scores = [];
-    for (let i = 1; i <= 12; i++) scores.push({ num: i, score: calcHorseScore(i) });
-    scores.sort((a, b) => a.score - b.score);
-    return scores.map(s => s.num);
-}
-
-function initBets() {
-    const container = document.getElementById('bet-rows-container');
-    container.innerHTML = '';
-    for (let i = 0; i < 10; i++) { addBetRow(); }
-}
-
-function addBetRow() {
-    const container = document.getElementById('bet-rows-container');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-        <td><input type="text" class="bet-name" placeholder="リスナー名" style="width:100%;"></td>
-        <td><input type="number" class="bet-amount" placeholder="100" style="width:100%;" min="0"></td>
-        <td>
-            <select class="bet-type" style="width:100%;">
-                <option value="単勝">単勝 (1.2倍)</option>
-                <option value="3連複">3連複 (1.8倍)</option>
-                <option value="3連単">3連単 (2.5倍)</option>
-            </select>
-        </td>
-        <td><input type="text" class="bet-predict" placeholder="例: 1,2,3" style="width:100%;"></td>
-        <td><input type="number" class="bet-streak" value="0" style="width:100%;" min="0"></td>
-    `;
-    container.appendChild(tr);
-}
-
-function calculatePayout(type, amount, isWin, streak) {
-    if (!isWin) return 0;
-    let baseOdds = type === "単勝" ? 1.2 : (type === "3連複" ? 1.8 : 2.5);
-    return Math.round((amount * (baseOdds + (streak * 0.2))) / 10) * 10;
-}
-
-function parseMultiPredict(str) {
-    const parts = str.split(/[\/／\s ]+/);
-    const bets = [];
-    for (const p of parts) {
-        if (!p.trim()) continue;
-        const arr = p.replace(/[-ー]/g, ',').split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
-        if (arr.length > 0) bets.push(arr);
-    }
-    return bets;
-}
-
-function startRace() {
-    if (isRacing) return;
-    finalRankings = calcRaceOrder();
-    document.getElementById('res-1st').value = finalRankings[0];
-    document.getElementById('res-2nd').value = finalRankings[1];
-    document.getElementById('res-3rd').value = finalRankings[2];
-    runRaceAnimation(finalRankings);
-}
-
-function startRaceWithResult() {
-    if (isRacing) return;
-    const r1 = parseInt(document.getElementById('res-1st').value);
-    const r2 = parseInt(document.getElementById('res-2nd').value);
-    const r3 = parseInt(document.getElementById('res-3rd').value);
-    if ([r1, r2, r3].some(n => isNaN(n) || n < 1 || n > 12) || r1===r2 || r2===r3 || r1===r3) {
-        alert("1〜12の正しい馬番を入力してください。"); return;
-    }
-    let remaining = Array.from({length:12}, (_,i)=>i+1).filter(n=>n!==r1&&n!==r2&&n!==r3);
-    remaining.sort(() => Math.random() - 0.5);
-    finalRankings = [r1, r2, r3, ...remaining];
-    runRaceAnimation(finalRankings);
-}
-
-function getLiveRankings(currentProgresses) {
-    let arr = [];
-    for(let i=1; i<=12; i++) {
-        arr.push({num: i, p: currentProgresses[i] || 0});
-    }
-    arr.sort((a,b) => b.p - a.p);
-    return arr.map(item => item.num);
-}
-
-function getHorseName(num) {
-    return document.getElementById(`horse-name-${num}`).value || `ウマ${num}`;
-}
-
-function runRaceAnimation(order) {
-    isRacing = true;
-    document.getElementById('start-btn').disabled = true;
-    resetHorsePositions();
-    document.getElementById('race-track').classList.remove('finished');
-
-    const RACE_DURATION_MS = 35000 + Math.random() * 10000;
-    const TICK_MS = 100;
-    const TOTAL_TICKS = RACE_DURATION_MS / TICK_MS;
-    const track = document.getElementById('race-track');
-    const finishedHorses = new Set();
-    let tick = 0;
-    
-    let currentProgresses = {};
-    for(let i=1; i<=12; i++) currentProgresses[i] = 0;
-
-    function setCommentary(text, tag = "実況") {
-        document.getElementById('commentary-box').innerHTML = `<span class="phase-tag">${tag}</span>${text}`;
-    }
-
-    setCommentary("各馬ゲートに入りました。……注目のスタートです！", "ゲート前");
-
-    const interval = setInterval(() => {
-        tick++;
-        const progress = tick / TOTAL_TICKS;
-        const width = track.clientWidth;
-        const height = track.clientHeight;
-
-        for (let i = 1; i <= 12; i++) {
-            if (finishedHorses.has(i)) continue;
-            const rank = order.indexOf(i);
-            const personalFinishTick = TOTAL_TICKS * (0.85 + rank * 0.015);
-            const rawPct = tick / personalFinishTick;
+        function initCards() {
+            const container = document.getElementById('cards-container');
+            container.innerHTML = '';
             
-            let eased = rawPct < 0.5 ? 2 * rawPct * rawPct : 1 - Math.pow(-2 * rawPct + 2, 2) / 2;
-            let p = Math.min(1.0, eased + (Math.random() - 0.5) * 0.006);
-            currentProgresses[i] = p;
+            // プリセット用キーをあいうえお順にソート（通常と限定で分ける）
+            const allKeys = Object.keys(CHARACTER_DATABASE).filter(k => k !== "custom");
+            const normalKeys = allKeys.filter(k => !CHARACTER_DATABASE[k].limited)
+                .sort((a, b) => CHARACTER_DATABASE[a].name.localeCompare(CHARACTER_DATABASE[b].name, 'ja'));
+            const limitedKeys = allKeys.filter(k => CHARACTER_DATABASE[k].limited)
+                .sort((a, b) => CHARACTER_DATABASE[a].name.localeCompare(CHARACTER_DATABASE[b].name, 'ja'));
 
-            const pos = getTrackPosition(p, i - 1, width, height);
-            const sprite = document.getElementById(`horse-sprite-${i}`);
-            if (sprite) {
-                sprite.style.left = `${pos.x}px`;
-                sprite.style.top = `${pos.y}px`;
+            for (let i = 1; i <= 5; i++) {
+                let cardHtml = `
+                    <div class="slime-card" id="card-${i}">
+                        <h3>エントリー ${i}</h3>
+                        <label>プリセット選択</label>
+                        <select id="preset-${i}" onchange="loadPreset(${i})">
+                            <option value="custom">--カスタム入力--</option>
+                            <optgroup label="── 通常 ──">
+                            ${normalKeys.map(k => `<option value="${k}">${CHARACTER_DATABASE[k].name}</option>`).join('')}
+                            </optgroup>
+                            <optgroup label="── 限定 ──">
+                            ${limitedKeys.map(k => `<option value="${k}">${CHARACTER_DATABASE[k].name}</option>`).join('')}
+                            </optgroup>
+                        </select>
+                        <label>名前</label><input type="text" id="name-${i}" value="キャラ${i}">
+                        <label>【調子】</label>
+                        <select id="condition-${i}" class="condition-select">
+                            <option value="good">好調 🌟</option>
+                            <option value="normal" selected>普通 😐</option>
+                            <option value="bad">悪い 💧</option>
+                        </select>
+                        <label>オッズ（倍率）</label><input type="number" step="0.1" id="odds-${i}" class="odds-input" value="${(1.5 + i).toFixed(1)}">
+                        <label>HP</label><input type="number" id="hp-${i}" value="15">
+                        <label>攻撃力</label><input type="number" id="atk-${i}" value="12">
+                        <label>防御力</label><input type="number" id="def-${i}" value="6">
+                        <label>素早さ</label><input type="number" id="spd-${i}" value="20">
+                        <label>特性タグ</label><input type="text" id="type-${i}" value="物理">
+                        <label>作戦（狙い）</label>
+                        <select id="target-${i}">
+                            <option value="力自慢">力自慢</option>
+                            <option value="強者">強者</option>
+                            <option value="弱者">弱者</option>
+                            <option value="とどめ">とどめ</option>
+                            <option value="鉄壁">鉄壁</option>
+                            <option value="韋駄天">韋駄天</option>
+                            <option value="元気">元気</option>
+                            <option value="魔族">魔族</option>
+                            <option value="均等">均等</option>
+                        </select>
+                        <input type="hidden" id="skill-${i}" value="none">
+                        <input type="hidden" id="crit-${i}" value="5">
+                    </div>`;
+                container.innerHTML += cardHtml;
             }
-
-            if (p >= 1.0) {
-                finishedHorses.add(i);
-                sprite.classList.add('finished');
-            }
+            toggleCards();
         }
 
-        const liveOrder = getLiveRankings(currentProgresses);
-        const leader = liveOrder[0];
-        const second = liveOrder[1];
-
-        if (tick === Math.floor(TOTAL_TICKS * 0.05)) {
-            setCommentary(`ゲートが開いた！ポンと飛び出したのは ${leader}番：${getHorseName(leader)}！好スタートを決めました！`, "スタート");
-        } 
-        else if (tick === Math.floor(TOTAL_TICKS * 0.25)) {
-            setCommentary(`序盤の展開、先頭を引っ張るのはやはり ${leader}番：${getHorseName(leader)}！すぐ後ろに${second}番：${getHorseName(second)}がぴったりとつけています！`, "序盤");
-        } 
-        else if (tick === Math.floor(TOTAL_TICKS * 0.50)) {
-            setCommentary(`第3コーナーから4コーナーへ！先頭は ${leader}番：${getHorseName(leader)}が死守！しかし中団から一気に集団が押し寄せてくる！`, "中盤");
-        } 
-        else if (tick === Math.floor(TOTAL_TICKS * 0.75)) {
-            const final1st = order[0];
-            setCommentary(`最終直線に入った！！ここで大外から凄まじい脚で ${final1st}番：${getHorseName(final1st)} が差し込んでくる！！前を捉えられるか！？`, "最終直線");
-        } 
-        else if (tick === Math.floor(TOTAL_TICKS * 0.90)) {
-            setCommentary(`残り100を切った！！叩き合いだ！ ${order[0]}番：${getHorseName(order[0])} が完全に抜け出したか！逃げるか！差し切るか！！`, "クライマックス");
+        function loadPreset(index) {
+            const key = document.getElementById(`preset-${index}`).value;
+            const data = CHARACTER_DATABASE[key];
+            if(!data) return;
+            document.getElementById(`name-${index}`).value = data.name;
+            document.getElementById(`hp-${index}`).value = data.hp;
+            document.getElementById(`atk-${index}`).value = data.atk;
+            document.getElementById(`def-${index}`).value = data.def;
+            document.getElementById(`spd-${index}`).value = data.spd;
+            document.getElementById(`type-${index}`).value = data.type;
+            document.getElementById(`target-${index}`).value = data.target;
+            document.getElementById(`skill-${index}`).value = data.skill;
+            document.getElementById(`crit-${index}`).value = data.crit;
         }
 
-        if (finishedHorses.size >= 12 || tick >= TOTAL_TICKS + 50) {
-            clearInterval(interval);
-            isRacing = false;
-            document.getElementById('start-btn').disabled = false;
-            setCommentary(`${order[0]}番：${getHorseName(order[0])} が見事に制しました！激しい一戦が終わりました！`, "ゴール");
-            document.getElementById('race-track').classList.add('finished');
-            setTimeout(endRace, 1000);
-        }
-    }, TICK_MS);
-}
-
-function endRace() {
-    const h1 = finalRankings[0], h2 = finalRankings[1], h3 = finalRankings[2];
-
-    let resultHtml = `
-        <div class="result-box">
-            <h3 style="color:var(--accent-green); margin-bottom:5px;">★確定着順★</h3>
-            <div style="font-size:15px; font-weight:bold; margin-bottom:10px; line-height:1.7;">
-                <span class="rank-badge rank-1">1着</span> ${h1}番 (${getHorseName(h1)})<br>
-                <span class="rank-badge rank-2">2着</span> ${h2}番 (${getHorseName(h2)})<br>
-                <span class="rank-badge rank-3">3着</span> ${h3}番 (${getHorseName(h3)})
-            </div>
-            <h4 style="margin: 5px 0;">【配当一覧】</h4>
-            <ul style="padding-left:15px; font-size:13px; margin-bottom:15px;">
-    `;
-
-    let logEntries = [];
-    const trs = document.getElementById('bet-rows-container').getElementsByTagName('tr');
-    let hitCount = 0;
-
-    for (let tr of trs) {
-        const nameInput    = tr.querySelector('.bet-name');
-        const amountInput  = tr.querySelector('.bet-amount');
-        const typeSelect   = tr.querySelector('.bet-type');
-        const predictInput = tr.querySelector('.bet-predict');
-        const streakInput  = tr.querySelector('.bet-streak');
-
-        if (!nameInput || !amountInput || !nameInput.value.trim() || !amountInput.value) continue;
-
-        const name = nameInput.value.trim();
-        const amountPerPoint = parseInt(amountInput.value);
-        const type = typeSelect.value;
-        const multiPredicts = parseMultiPredict(predictInput.value);
-        const currentStreak = parseInt(streakInput.value) || 0;
-
-        if (multiPredicts.length === 0) continue;
-
-        let rowTotalBet = amountPerPoint * multiPredicts.length;
-        let rowWinAmount = 0;
-        let hitAny = false;
-
-        for (const predictArr of multiPredicts) {
-            let isWin = false;
-            if (type === "単勝" && predictArr.length > 0 && predictArr[0] === h1) isWin = true;
-            else if (type === "3連複" && predictArr.length === 3) {
-                if ([h1,h2,h3].sort().join(',') === [...predictArr].sort().join(',')) isWin = true;
-            } else if (type === "3連単" && predictArr.length === 3) {
-                if (predictArr[0]===h1 && predictArr[1]===h2 && predictArr[2]===h3) isWin = true;
-            }
-            if (isWin) {
-                hitAny = true;
-                rowWinAmount += calculatePayout(type, amountPerPoint, true, currentStreak);
+        function toggleCards() {
+            const count = Number(document.getElementById('player-count').value);
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`card-${i}`).style.display = i <= count ? 'block' : 'none';
             }
         }
 
-        if (hitAny) {
-            hitCount++;
-            resultHtml += `<li>🎉 <strong>${name}</strong> (${type}) → <span style="color:var(--accent-green); font-weight:bold;">${rowWinAmount}円</span></li>`;
-            logEntries.push(`[的中] ${name} (${type}) ${rowTotalBet}円->${rowWinAmount}円`);
-            streakInput.value = currentStreak + 1;
-        } else {
-            if (currentStreak >= 1) resultHtml += `<li>残 <strong>${name}</strong> (${type}): 0円</li>`;
-            streakInput.value = 0;
+        function calculateDamage(attacker, defender, isMagic = false) {
+            if (!isMagic && defender.type.includes("物理耐性")) return 1;
+            if (isMagic && defender.type.includes("魔法耐性")) {
+                let dmg = Math.floor((attacker.curAtk * 0.95) - (defender.curDef * 0.8));
+                return Math.max(1, Math.floor(dmg / 2));
+            }
+            let dmg = Math.floor((attacker.curAtk * 0.95) - (defender.curDef * 0.8)) + (Math.floor(Math.random() * 2));
+            return Math.max(1, dmg);
         }
-    }
 
-    if (hitCount === 0) resultHtml += `<li style="color:var(--text-muted);">的中者はいませんでした。</li>`;
-    resultHtml += `</ul>`;
+        function runSimulation() {
+            const count = Number(document.getElementById('player-count').value);
+            const stage = document.getElementById('stage-select').value;
+            const totalBattles = Number(document.getElementById('sim-count').value);
+            
+            let initialActiveSlimes = [];
+            for(let i=1; i<=count; i++) {
+                // キャラ固有のクリティカル率を使用（ベルチャ系は15～30%、他は3～15%の範囲内でキャラ固有値±揺らぎ）
+                let baseCrit = Number(document.getElementById(`crit-${i}`).value) / 100;
+                let critChance;
+                if (baseCrit >= 0.20) {
+                    // ベルチャ系：15%～30%
+                    critChance = baseCrit + (Math.random() * 0.05 - 0.025);
+                    critChance = Math.max(0.15, Math.min(0.30, critChance));
+                } else {
+                    // 通常：3%～15%の範囲でキャラ固有値を中心に揺らぎ
+                    critChance = baseCrit + (Math.random() * 0.04 - 0.02);
+                    critChance = Math.max(0.03, Math.min(0.15, critChance));
+                }
 
-    // 着順テーブル表示機能
-    resultHtml += `
-        <h4 style="margin: 10px 0 5px 0; border-top: 1px solid #333; padding-top: 10px;">📋 今回の全頭着順一覧</h4>
-        <table class="full-ranking-table">
-            <thead>
-                <tr>
-                    <th style="width:20%;">着順</th>
-                    <th style="width:25%;">馬番</th>
-                    <th style="width:55%;">馬名</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
+                let slime = {
+                    id: i,
+                    name: document.getElementById(`name-${i}`).value,
+                    condition: document.getElementById(`condition-${i}`).value,
+                    hp: Number(document.getElementById(`hp-${i}`).value),
+                    atk: Number(document.getElementById(`atk-${i}`).value),
+                    def: Number(document.getElementById(`def-${i}`).value),
+                    spd: Number(document.getElementById(`spd-${i}`).value),
+                    odds: Number(document.getElementById(`odds-${i}`).value),
+                    type: document.getElementById(`type-${i}`).value,
+                    targetStrategy: document.getElementById(`target-${i}`).value,
+                    skill: document.getElementById(`skill-${i}`).value,
+                    crit: critChance,
+                    wins: 0
+                };
 
-    finalRankings.forEach((horseNum, index) => {
-        const rank = index + 1;
-        let badgeClass = "rank-other";
-        if (rank === 1) badgeClass = "rank-1";
-        if (rank === 2) badgeClass = "rank-2";
-        if (rank === 3) badgeClass = "rank-3";
+                if (slime.name.includes("ライアード")) {
+                    if (stage === "grass") {
+                        slime.hp = Math.floor(slime.hp * 1.3); slime.atk = Math.floor(slime.atk * 1.3); slime.def = Math.floor(slime.def * 1.3); slime.spd = Math.floor(slime.spd * 1.3);
+                    } else if (stage === "volcano") {
+                        slime.hp = Math.floor(slime.hp * 0.7); slime.atk = Math.floor(slime.atk * 0.7); slime.def = Math.floor(slime.def * 0.7); slime.spd = Math.floor(slime.spd * 0.7);
+                    }
+                }
+                initialActiveSlimes.push(slime);
+            }
 
-        resultHtml += `
-            <tr>
-                <td><span class="rank-badge ${badgeClass}">${rank}着</span></td>
-                <td style="font-weight:bold; color:var(--accent-color);">${horseNum}</td>
-                <td style="text-align:left; padding-left:10px;">${getHorseName(horseNum)}</td>
-            </tr>
-        `;
-    });
+            for (let b = 0; b < totalBattles; b++) {
+                let slimes = initialActiveSlimes.map(s => ({
+                    ...s,
+                    curHp: s.hp, curAtk: s.atk, curDef: s.def, curSpd: s.spd, curCrit: s.crit,
+                    mp: 99, stan: 0, confuse: 0, poison: 0, sleep: 0, counter: false, golemShield: 0, fixedOne: false, skillUsedCount: 0
+                }));
 
-    resultHtml += `</tbody></table></div>`;
-    document.getElementById('result-display').innerHTML = resultHtml;
+                let lafree = slimes.find(s => s.name.includes("ラフリィ") && s.curHp > 0);
+                if (lafree) {
+                    let highestOddsEnemy = [...slimes].filter(s => s.id !== lafree.id && s.curHp > 0).sort((a,b)=>b.odds - a.odds)[0];
+                    if (highestOddsEnemy) {
+                        highestOddsEnemy.curAtk *= 1.3; highestOddsEnemy.curDef *= 1.3; highestOddsEnemy.curSpd *= 1.3;
+                    }
+                    lafree.curHp = 0;
+                }
 
-    const logArea = document.getElementById('log-area');
-    if (logArea.innerText.includes("履歴はありません。")) logArea.innerHTML = "";
-    const timestamp = new Date().toLocaleTimeString();
-    let logHeader = `--- [${timestamp}] ${h1}-${h2}-${h3} ---\n`;
-    logHeader += logEntries.length === 0 ? "的中者なし\n" : logEntries.join('\n') + '\n';
-    logArea.innerHTML = logHeader + logArea.innerHTML;
-}
-</script>
+                let turn = 0;
+                while (slimes.filter(s => s.curHp > 0).length > 1 && turn < 100) {
+                    turn++;
+                    let alive = slimes.filter(s => s.curHp > 0);
+                    
+                    // ─── 行動順ソート ───
+                    alive.sort((a, b) => {
+                        let aIsLafree = a.name.includes("ラフリィ");
+                        let bIsLafree = b.name.includes("ラフリィ");
+                        if (aIsLafree && !bIsLafree) return -1;
+                        if (!aIsLafree && bIsLafree) return 1;
+                        return a.id - b.id;
+                    });
+
+                    for (let i = 0; i < alive.length; i++) {
+                        let attacker = alive[i];
+                        if (attacker.curHp <= 0) continue;
+
+                        if (attacker.poison > 0) {
+                            attacker.curHp -= 2;
+                            attacker.poison--;
+                            if (attacker.curHp <= 0) continue;
+                        }
+
+                        if (attacker.stan > 0) { attacker.stan--; continue; }
+
+                        let targets = slimes.filter(s => s.id !== attacker.id && s.curHp > 0);
+                        if (targets.length === 0) break;
+
+                        let target = targets[0];
+                        
+                        if (Math.random() < 0.35 || attacker.targetStrategy === "均等") {
+                            target = targets[Math.floor(Math.random() * targets.length)];
+                        } else {
+                            let strat = attacker.targetStrategy;
+                            if (strat === "力自慢") targets.sort((a,b)=>b.curAtk - a.curAtk);
+                            else if (strat === "強者") targets.sort((a,b)=>b.odds - a.odds);
+                            else if (strat === "弱者") targets.sort((a,b)=>a.odds - b.odds);
+                            else if (strat === "とどめ") targets.sort((a,b)=>a.curHp - b.curHp);
+                            else if (strat === "鉄壁") targets.sort((a,b)=>b.curDef - a.curDef);
+                            else if (strat === "韋駄天") targets.sort((a,b)=>b.curSpd - a.curSpd);
+                            else if (strat === "元気") targets.sort((a,b)=>b.curHp - a.curHp);
+                            else if (strat === "魔族") {
+                                let m_targets = targets.filter(s => s.type.includes("魔族"));
+                                if(m_targets.length > 0) targets = m_targets;
+                            }
+                            target = targets[0];
+                        }
+
+                        if (attacker.confuse > 0) {
+                            if (Math.random() < 0.5) target = attacker;
+                        }
+
+                        let spdDiff = attacker.curSpd - target.curSpd;
+                        let evadeChance = 0.06; 
+                        if (spdDiff < 0) evadeChance += 0.04;
+                        if (spdDiff > 0) evadeChance -= 0.03;
+                        if (target.type.includes("鈍足回避")) evadeChance *= 2;
+
+                        if (target.condition === "good") evadeChance += 0.04;  
+                        if (target.condition === "bad") evadeChance -= 0.03;   
+                        if (attacker.condition === "good") evadeChance -= 0.03; 
+                        if (attacker.condition === "bad") evadeChance += 0.04;  
+
+                        let isEvaded = Math.random() < evadeChance;
+                        
+                        let skillTriggerChance = 0.40;
+                        if (attacker.condition === "good") skillTriggerChance = 0.60;
+                        if (attacker.condition === "bad") skillTriggerChance = 0.20;
+                        // ピンクモケマルはスキル発動率30〜40%（好調時は50〜60%）
+                        if (attacker.skill === "hanakagura_p") {
+                            skillTriggerChance = attacker.condition === "good" ? 0.55 : attacker.condition === "bad" ? 0.25 : 0.35;
+                        }
+
+                        let useSkill = (attacker.skill !== "none" && Math.random() < skillTriggerChance);
+
+                        // スリープ中は攻撃できない（攻撃されると起きる）
+                        if (attacker.sleep > 0) {
+                            attacker.sleep--;
+                            continue;
+                        }
+
+                        function executeAttack(att, trg) {
+                            if (useSkill && att.mp > 0) {
+                                att.mp--;
+                                att.skillUsedCount++;
+
+                                if (att.skill === "hanakagura_p" || att.skill === "hanakagura") {
+                                    let dmg = Math.floor(calculateDamage(att, trg, true) * 1.5);
+                                    if (!isEvaded) damageProcess(att, trg, dmg, false);
+                                } 
+                                else if (att.skill === "mukimukin") { att.curAtk = Math.floor(att.curAtk * 1.3); } 
+                                else if (att.skill === "kanashibaru" || att.skill === "shibilto") { if (Math.random() > 0.3) trg.stan = Math.floor(Math.random() * 2) + 1; } 
+                                else if (att.skill === "daichi") { if (!isEvaded) damageProcess(att, trg, Math.floor(att.curAtk / 2), true); } 
+                                else if (att.skill === "gaogao") {
+                                    if (Math.random() < 0.15) {
+                                        // 失敗：以降の攻撃が1固定
+                                        att.fixedOne = true;
+                                        // 攻撃はしない
+                                    } else {
+                                        let dmg = Math.floor(calculateDamage(att, trg) * 1.5);
+                                        if (!isEvaded) damageProcess(att, trg, dmg, false);
+                                        att.curAtk = Math.floor(att.curAtk * 1.3);
+                                    }
+                                } 
+                                else if (att.skill === "zubazuban") { att.curCrit = Math.min(att.curCrit + 0.05, 0.8); } 
+                                else if (att.skill === "funyamukin") { att.curAtk = Math.floor(att.curAtk * 1.5); att.curDef = Math.floor(att.curDef * 0.7); } 
+                                else if (att.skill === "refresh") { att.curHp = Math.min(att.hp, att.curHp + 9); } 
+                                else if (att.skill === "dokuruto") { if (Math.random() > 0.2) trg.poison = 5; }  // 攻撃なし、毒のみ
+                                else if (att.skill === "pitapitan") { att.curSpd += 20; } 
+                                else if (att.skill === "tsukikuzushi") { let dmg = Math.floor(calculateDamage(att, trg) * 0.7); if (!isEvaded) { damageProcess(att, trg, dmg, false); trg.curAtk = Math.floor(trg.curAtk * 0.85); } } 
+                                else if (att.skill === "dranyan_skill") {
+                                    let dmg = calculateDamage(att, trg, true);
+                                    if (!isEvaded) { damageProcess(att, trg, dmg, false); att.curHp = Math.min(att.hp, att.curHp + dmg); }
+                                    if (att.skillUsedCount >= 2 && Math.random() < 0.6) att.sleep = 1;
+                                } 
+                                else if (att.skill === "onemu") { att.sleep = 1; } 
+                                else if (att.skill === "fire") { let dmg = Math.floor(calculateDamage(att, trg, true) * 1.3); if (!isEvaded) damageProcess(att, trg, dmg, false); } 
+                                else if (att.skill === "purupuru") { if(Math.random() < 0.5) att.counter = true; } 
+                                else if (att.skill === "piyolto") { if (Math.random() > 0.2) trg.confuse = 3; } 
+                                else if (att.skill === "kibikibin") { att.curSpd = Math.floor(att.curSpd * 3); } // 3倍に修正
+                                else if (att.skill === "kachikochin") { att.golemShield = 2; } 
+                                else if (att.skill === "oyatsu") { att.curHp = Math.min(att.hp, att.curHp + 6); att.curAtk = Math.floor(att.curAtk * 2); } 
+                                else if (att.skill === "nightmare") { slimes.forEach(s => { if (s.id !== att.id && s.curHp > 0) { damageProcess(att, s, Math.floor(att.curAtk * 0.5), true); } }); } 
+                                else if (att.skill === "funyarto") { if (Math.random() > 0.2) trg.curDef = Math.floor(trg.curDef * 0.5); }
+                                else if (att.skill === "burelto") { if (Math.random() > 0.2) trg.curSpd = Math.floor(trg.curSpd * 0.5); }
+                                else if (att.skill === "kirakiran") { att.curHp = Math.min(att.hp, att.curHp + 10); att.curDef = Math.floor(att.curDef * 1.5); }
+                                else if (att.skill === "medikaran") { att.curAtk = Math.floor(att.curAtk * 2); }
+                                else if (att.skill === "lucky") { /* ラフリィは別処理 */ }
+                            } else {
+                                if (!isEvaded) {
+                                    let dmg = att.fixedOne ? 1 : calculateDamage(att, trg);
+                                    if (Math.random() < att.curCrit) { dmg = Math.floor(dmg * 1.5); }
+                                    damageProcess(att, trg, dmg, false);
+                                }
+                            }
+                            if (trg.sleep > 0 && !isEvaded) trg.sleep = 0;
+                        }
+
+                        executeAttack(attacker, target);
+
+                        if (attacker.name.includes("ヤミクマ") && attacker.curHp > 0) {
+                            let currentAlive = slimes.filter(s => s.curHp > 0);
+                            if (currentAlive.length === 2) {
+                                let enemy = currentAlive.find(s => s.id !== attacker.id);
+                                if ((attacker.curSpd - enemy.curSpd) >= 10 && Math.random() < 0.15) {
+                                    executeAttack(attacker, enemy);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let aliveEnd = slimes.filter(s => s.curHp > 0);
+                if (aliveEnd.length === 1) {
+                    initialActiveSlimes.find(s => s.id === aliveEnd[0].id).wins++;
+                } else if (aliveEnd.length === 0) {
+                    let chu = slimes.find(s => s.name.includes("チューヘイさん"));
+                    if(chu) initialActiveSlimes.find(s => s.id === chu.id).wins++;
+                    else if (initialActiveSlimes[0]) initialActiveSlimes[0].wins++;
+                }
+            }
+
+            let sortedSlimes = [...initialActiveSlimes].sort((a, b) => b.wins - a.wins);
+
+            const resultsList = document.getElementById('results-list');
+            resultsList.innerHTML = '';
+            sortedSlimes.forEach(s => {
+                let winRate = ((s.wins / totalBattles) * 100).toFixed(1);
+                let condText = document.getElementById(`condition-${s.id}`).selectedOptions[0].text;
+                resultsList.innerHTML += `
+                    <div class="result-item">
+                        <div class="result-label"><strong>${s.name}</strong> (${condText})：${totalBattles}回中 <b>${s.wins}</b> 回 1位（勝率: ${winRate}%）</div>
+                        <div class="result-bar">
+                            <div class="result-fill" style="width: ${winRate}%">${winRate}%</div>
+                        </div>
+                    </div>`;
+            });
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function damageProcess(attacker, target, dmg, isFixed = false) {
+            if (target.counter) {
+                attacker.curHp -= dmg;
+                target.counter = false;
+                return;
+            }
+            if (target.name.includes("ゴーレム") && target.golemShield > 0) {
+                dmg = 1; target.golemShield--;
+                if(target.golemShield === 0) target.fixedOne = true;
+            } else if (target.name.includes("ゴーレム") && target.fixedOne) {
+                dmg = 2;
+            }
+
+            target.curHp -= dmg;
+
+            if (target.name.includes("チューヘイさん") && target.curHp <= 3 && target.curHp > 0) {
+                if (Math.random() < 0.7) {
+                    attacker.curHp -= Math.floor(target.curAtk * 1.5);
+                    target.curHp = 0;
+                }
+            }
+        }
+
+        initCards();
+    </script>
 </body>
 </html>
