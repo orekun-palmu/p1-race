@@ -364,6 +364,24 @@
         .save-name-row label { font-size: 12px; color: #888; white-space: nowrap; }
         .modal-hint { font-size: 12px; color: #666; margin-bottom: 14px; }
 
+        /* ===== お知らせバナー ===== */
+        #notice-banner {
+            display: none;
+            background: linear-gradient(90deg, #1a3a1a, #0d2a0d);
+            border: 1px solid var(--accent-green);
+            border-left: 4px solid var(--accent-green);
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-bottom: 14px;
+            font-size: 13px;
+            color: #b0ffb0;
+            line-height: 1.6;
+            animation: noticeFade 0.5s ease;
+        }
+        @keyframes noticeFade { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+        #notice-banner a { color: var(--accent-gold); font-weight: bold; text-decoration: underline; }
+        #notice-banner a:hover { color: #ffe55c; }
+
         @media (min-width: 768px) {
             body { padding: 20px; }
             h1 { font-size: 2rem; }
@@ -375,6 +393,8 @@
     </style>
 </head>
 <body>
+    <div id="notice-banner"></div>
+
     <h1>🏆 P1レース パルム記念杯</h1>
 
     <div class="help-container">
@@ -1288,6 +1308,25 @@ function endRace() {
     logHeader += logEntries.length === 0 ? "的中者なし\n" : logEntries.join('\n') + '\n';
     logArea.innerHTML = logHeader + logArea.innerHTML;
 }
+</script>
+
+<script>
+// ===== お知らせバナー読み込み =====
+(function() {
+    fetch('notice.json?t=' + Date.now())
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+            if (!data || !data.text) return;
+            const banner = document.getElementById('notice-banner');
+            let html = '📢 ' + data.text;
+            if (data.linkUrl && data.linkText) {
+                html += ' <a href="' + data.linkUrl + '" target="_blank" rel="noopener">' + data.linkText + '</a>';
+            }
+            banner.innerHTML = html;
+            banner.style.display = 'block';
+        })
+        .catch(() => {}); // notice.jsonがない場合は何も表示しない
+})();
 </script>
 </body>
 </html>
