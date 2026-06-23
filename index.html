@@ -504,6 +504,7 @@
                 <div class="flex-between" style="margin-bottom: 8px;">
                     <h2>🏇 メインレース映像</h2>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button id="fanfare-btn" onclick="playFanfare()" style="background:#1a3a5c; border:1px solid #2980b9; color:#74b9ff;">🎺 ファンファーレ</button>
                         <button id="start-btn" onclick="startRace()">▶ レース開始（自動）</button>
                     </div>
                 </div>
@@ -1547,7 +1548,14 @@ function endRace() {
 </script>
 
 <script>
-// ===== お知らせバナー読み込み =====
+// ===== ファンファーレ再生 =====
+const fanfareAudio = new Audio('sounds/ファンファーレ.mp3');
+
+function playFanfare() {
+    fanfareAudio.currentTime = 0; // 最初から再生
+    fanfareAudio.play().catch(() => {});
+}
+
 (function() {
     fetch('notice.json?t=' + Date.now())
         .then(r => r.ok ? r.json() : null)
