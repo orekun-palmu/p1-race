@@ -364,6 +364,47 @@
         .save-name-row label { font-size: 12px; color: #888; white-space: nowrap; }
         .modal-hint { font-size: 12px; color: #666; margin-bottom: 14px; }
 
+        /* ===== 予想屋パネル ===== */
+        .predictor-panel {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 1px solid #2a3a5c;
+            border-radius: 8px;
+            padding: 14px;
+        }
+        .predictor-panel h3 { color: var(--accent-gold); margin-bottom: 12px; font-size: 1rem; }
+        .predictor-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        @media (min-width: 600px) { .predictor-grid { grid-template-columns: repeat(3, 1fr); } }
+        .predictor-card {
+            background: #0f1923; border: 1px solid #2e4060;
+            border-radius: 8px; padding: 12px; position: relative; overflow: hidden;
+        }
+        .predictor-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        }
+        .pred-a::before { background: linear-gradient(90deg,#ffd700,#ff9f43); }
+        .pred-b::before { background: linear-gradient(90deg,#2ed573,#1abc9c); }
+        .pred-c::before { background: linear-gradient(90deg,#a29bfe,#6c5ce7); }
+        .predictor-avatar { font-size: 28px; margin-bottom: 4px; }
+        .predictor-name { font-weight: bold; font-size: 13px; color: #ddd; margin-bottom: 2px; }
+        .predictor-title { font-size: 11px; color: #888; margin-bottom: 8px; }
+        .predictor-pick {
+            background: #1a2a3a; border-radius: 6px; padding: 8px 10px;
+            font-size: 12px; line-height: 1.8; color: #c8d6e5;
+        }
+        .pick-label {
+            display: inline-block; padding: 1px 6px; border-radius: 3px;
+            font-size: 11px; font-weight: bold; margin-right: 4px;
+        }
+        .pick-1st { background: #ffd700; color: #000; }
+        .pick-2nd { background: #c0c0c0; color: #000; }
+        .pick-dark { background: #8e44ad; color: #fff; }
+        .predictor-comment { font-size: 11px; color: #888; margin-top: 6px; font-style: italic; line-height: 1.5; }
+        .predictor-refresh-btn {
+            display: block; width: 100%; margin-top: 10px; font-size: 12px; padding: 6px;
+            background: #1a3a5c; color: #74b9ff; border: 1px solid #2980b9; border-radius: 4px;
+        }
+        .predictor-refresh-btn:hover { background: #2980b9; color: #fff; }
+
         /* ===== お知らせバナー ===== */
         #notice-banner {
             display: none;
@@ -521,6 +562,15 @@
                         <tbody id="status-tbody"></tbody>
                     </table>
                 </div>
+            </div>
+
+            <!-- 予想屋パネル -->
+            <div class="panel predictor-panel" id="predictor-panel">
+                <h3>🔮 予想屋の見解 <span style="font-size:11px;color:#888;font-weight:normal;">（ステータス生成のたびに更新）</span></h3>
+                <div class="predictor-grid" id="predictor-grid">
+                    <p style="color:#888;font-size:13px;">ステータスを生成すると予想屋が登場します。</p>
+                </div>
+                <button class="predictor-refresh-btn" onclick="generatePredictors()">🎲 予想を更新する</button>
             </div>
 
             <div class="panel">
@@ -980,6 +1030,7 @@ function generateHorseStatus(horseNum) {
 function generateAllStatus() {
     for (let i = 1; i <= 12; i++) { generateHorseStatus(i); }
     renderStatusTable();
+    generatePredictors();
 }
 
 function renderStatusTable() {
@@ -1009,34 +1060,155 @@ function renderStatusTable() {
 
 function calcHorseScore(horseNum) {
     const st = horseStatuses[horseNum];
-    if (!st) return 0.5 + Math.random() * 0.5;
+    if (!st) return Math.random() * 50 + 25;
 
     const es = st.effectiveStats;
     const today = document.getElementById('weather-today').value;
     const yesterday = document.getElementById('weather-yesterday').value;
     const dist = parseInt(document.getElementById('race-distance').value);
-
-    let score = (15 - (es['スピード'] || 8)) * 3.0;
-    const distanceFactor = dist / 1600;
-    score += (15 - (es['スタミナ'] || 8)) * distanceFactor * 1.2;
-    score += (15 - (es['柔軟性'] || 8)) * (distanceFactor > 1 ? 0.5 : 0.2);
-
     const isWetTrack = (today === 'rain') || (yesterday === 'rain') || (today === 'cloudy' && yesterday === 'shower');
-    if (isWetTrack) score += (15 - (es['パワー'] || 8)) * 1.5;
-    if (courseFeatures.uphill) score += (15 - (es['パワー'] || 8)) * 0.8;
-    if (courseFeatures.wind)   score += (15 - (es['精神力'] || 8)) * 0.6;
+    const distanceFactor = dist / 1600;
 
-    const wisdomFactor = (15 - (es['賢さ'] || 8)) / 15;
-    score += (Math.random() - 0.5) * (8 + wisdomFactor * 6);
+    // グレードを数値（高いほど強い）に変換: S+=100, S=93, ... G=0
+    function gradeToVal(idx) { return Math.max(0, (15 - idx) / 15 * 100); }
 
-    return Math.max(0, score);
+    const spd = gradeToVal(es['スピード'] ?? 8);
+    const sta = gradeToVal(es['スタミナ'] ?? 8);
+    const gut = gradeToVal(es['根性'] ?? 8);
+    const pow = gradeToVal(es['パワー'] ?? 8);
+    const ins = gradeToVal(es['瞬発力'] ?? 8);
+    const men = gradeToVal(es['精神力'] ?? 8);
+    const wis = gradeToVal(es['賢さ'] ?? 8);
+
+    // 調子ボーナス（ステータスとは別に調子自体もスコアに乗せる）
+    const condKey = st.condition.key;
+    const condBonus = { perfect: 20, good: 10, normal: 0, poor: -10, bad: -20, devil: (Math.random() < 0.5 ? 25 : -15) }[condKey] ?? 0;
+
+    // 距離適性：スプリントはスピード重視、長距離はスタミナ重視
+    let base = spd * (distanceFactor <= 0.75 ? 3.5 : distanceFactor <= 1.0 ? 3.0 : 2.0)
+             + sta * (distanceFactor <= 0.75 ? 1.0 : distanceFactor <= 1.25 ? 2.0 : 3.5)
+             + gut * 1.2
+             + ins * 1.5
+             + pow * (isWetTrack ? 2.0 : 0.8);
+
+    if (courseFeatures.uphill) base += pow * 0.8;
+    if (courseFeatures.wind)   base += men * 0.8;
+
+    base += condBonus * 2;
+
+    // 賢さが高いほど乱数ブレ小さい（安定して走る）
+    const randRange = 30 * (1 - wis / 120);
+    base += (Math.random() - 0.5) * randRange * 2;
+
+    return Math.max(1, base);
 }
 
 function calcRaceOrder() {
     const scores = [];
     for (let i = 1; i <= 12; i++) scores.push({ num: i, score: calcHorseScore(i) });
-    scores.sort((a, b) => a.score - b.score);
+    scores.sort((a, b) => b.score - a.score); // 高スコア順 = 強い馬が上
     return scores.map(s => s.num);
+}
+
+// ===== 予想屋ロジック =====
+const PREDICTORS = [
+    { id:'a', cls:'pred-a', avatar:'🎩', name:'老師ケイバ翁', title:'競馬歴40年・スピード重視派', 
+      style:'speed', comments: [
+        'この馬のスピードは本物じゃ。直線で弾けるぞ。',
+        '絶好調の馬は侮れん。昔からそう決まっておる。',
+        'スタミナ不足が気になるが…いや、届くじゃろう。',
+        '馬場が良ければこの馬は走る。間違いない。',
+        '枠順よりスピードじゃ。速い馬が勝つ、それだけのこと。'
+    ]},
+    { id:'b', cls:'pred-b', avatar:'📊', name:'データ博士・ミナミ', title:'統計分析・ステータス全重視派',
+      style:'balanced', comments: [
+        '総合スコアの計算上、この馬が最有力です。',
+        '調子と距離適性を掛け合わせると…この結論になります。',
+        '不調馬は統計的に3着以内に入る確率が低下します。',
+        'スタミナと根性の複合値がトップクラスです。',
+        '賢さが高い馬は終盤のペース配分が上手いんですよ。'
+    ]},
+    { id:'c', cls:'pred-c', avatar:'🌟', name:'大穴娘・アカネ', title:'波乱万丈・穴狙い専門家',
+      style:'upset', comments: [
+        'みんなが注目してない馬こそ来る！それが競馬！',
+        '絶不調って書いてあるけど、逆にアツくない!?',
+        '人気馬が飛ぶ展開…あるかもよ？うふふ。',
+        'このステータスでこの調子、なんか爆発しそう！',
+        '大穴狙いの醍醐味はこういう馬！来い来い来い！'
+    ]}
+];
+
+function generatePredictors() {
+    if (Object.keys(horseStatuses).length === 0) return;
+    const grid = document.getElementById('predictor-grid');
+    grid.innerHTML = '';
+
+    PREDICTORS.forEach(pred => {
+        const picks = buildPrediction(pred.style);
+        const comment = pred.comments[Math.floor(Math.random() * pred.comments.length)];
+        const card = document.createElement('div');
+        card.className = `predictor-card ${pred.cls}`;
+        card.innerHTML = `
+            <div class="predictor-avatar">${pred.avatar}</div>
+            <div class="predictor-name">${pred.name}</div>
+            <div class="predictor-title">${pred.title}</div>
+            <div class="predictor-pick">
+                ${picks.map((p,i) => `<div>
+                    <span class="pick-label ${i===0?'pick-1st':i===1?'pick-2nd':'pick-dark'}">${i===0?'◎本命':i===1?'○対抗':'△穴'}</span>
+                    <strong style="color:var(--accent-color);">${p.num}番</strong>
+                    <span style="font-size:11px;color:#aaa;">${getHorseName(p.num)}</span>
+                    <small style="color:#666;">（${p.cond}）</small>
+                </div>`).join('')}
+            </div>
+            <div class="predictor-comment">"${comment}"</div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function buildPrediction(style) {
+    const today = document.getElementById('weather-today').value;
+    const yesterday = document.getElementById('weather-yesterday').value;
+    const dist = parseInt(document.getElementById('race-distance').value);
+    const isWet = (today==='rain')||(yesterday==='rain')||(today==='cloudy'&&yesterday==='shower');
+    const distFactor = dist / 1600;
+
+    function gradeToVal(idx) { return Math.max(0, (15 - idx) / 15 * 100); }
+    const COND_WEIGHTS = { perfect:5, good:3, normal:1, poor:-2, bad:-4, devil:2 };
+
+    const scores = [];
+    for (let i = 1; i <= 12; i++) {
+        const st = horseStatuses[i];
+        if (!st) continue;
+        const es = st.effectiveStats;
+        const spd = gradeToVal(es['スピード']??8);
+        const sta = gradeToVal(es['スタミナ']??8);
+        const gut = gradeToVal(es['根性']??8);
+        const pow = gradeToVal(es['パワー']??8);
+        const ins = gradeToVal(es['瞬発力']??8);
+        const condW = COND_WEIGHTS[st.condition.key] ?? 0;
+
+        let sc;
+        if (style === 'speed') {
+            sc = spd * 4 + ins * 2 + gut + condW * 8;
+        } else if (style === 'balanced') {
+            sc = spd * (distFactor <= 1 ? 3 : 2) + sta * (distFactor > 1 ? 3 : 1.5) + gut * 1.2 + pow * (isWet ? 2 : 0.8) + ins + condW * 10;
+        } else { // upset：あえてノイズを乗せて穴っぽくする
+            sc = (spd + sta + gut + pow + ins) / 5 + condW * 5 + Math.random() * 40 - 10;
+        }
+        scores.push({ num: i, score: sc, cond: st.condition.label });
+    }
+    scores.sort((a,b) => b.score - a.score);
+
+    // 予想屋によって少しブレをつける（infoが少し違うように見せる）
+    const top = scores.slice(0, 5);
+    const pick1 = top[0];
+    const pick2 = top[Math.floor(Math.random() * 2) + 1] || top[1];
+    // 穴：上位から外れた6〜10位あたりからランダムに
+    const darkPool = scores.slice(4, 10);
+    const pick3 = darkPool[Math.floor(Math.random() * darkPool.length)] || scores[5];
+
+    return [pick1, pick2, pick3].filter(Boolean);
 }
 
 function initBets() {
@@ -1129,7 +1301,17 @@ function runRaceAnimation(order) {
     const track = document.getElementById('race-track');
     const finishedHorses = new Set();
     let tick = 0;
-    
+
+    // --- 逆転ドラマ設定 ---
+    const final1st = order[0];
+    // 中盤リーダー：本命とは別の馬が一時先頭に立つ（逆転演出用）
+    const midLeaderCandidates = order.slice(1, 6); // 2〜6着馬から選ぶ
+    const midLeader = midLeaderCandidates[Math.floor(Math.random() * midLeaderCandidates.length)];
+    // 逆転が起きる地点（60〜80%の間）
+    const overturnTick = Math.floor(TOTAL_TICKS * (0.60 + Math.random() * 0.15));
+    let overturnDone = false;
+
+    // 各馬の進行状況を管理（中盤で意図的にmidLeaderを前に出す）
     let currentProgresses = {};
     for(let i=1; i<=12; i++) currentProgresses[i] = 0;
 
@@ -1137,22 +1319,67 @@ function runRaceAnimation(order) {
         document.getElementById('commentary-box').innerHTML = `<span class="phase-tag">${tag}</span>${text}`;
     }
 
-    setCommentary("各馬ゲートに入りました。……注目のスタートです！", "ゲート前");
+    // 実況フレーバーテキスト（バリエーション）
+    const startLines = [
+        `ゲートが開いた！真っ先に飛び出したのは ${getHorseName(midLeader)}（${midLeader}番）！先手を取りにきた！`,
+        `スタート！${midLeader}番 ${getHorseName(midLeader)} がロケットスタート！一気に先頭へ！`,
+        `好スタート！${midLeader}番 ${getHorseName(midLeader)} が抜群の出足を見せる！`,
+    ];
+    const midLines = [
+        `中盤、先頭は ${getHorseName(midLeader)}（${midLeader}番）！後続を引き離している！このまま逃げ切るか！？`,
+        `${getHorseName(midLeader)}（${midLeader}番）が力強いペースで先頭！後ろの馬たちが必死に追う！`,
+        `第2コーナー！${midLeader}番 ${getHorseName(midLeader)} が先頭で独走状態！差は2馬身、3馬身！`,
+    ];
+    const overturnLines = [
+        `ここで大外から ${getHorseName(final1st)}（${final1st}番）が猛然と追い上げてきた！！信じられない脚！！`,
+        `後方にいた ${final1st}番 ${getHorseName(final1st)} が一気に加速！先頭に迫る！！逆転か！！`,
+        `${getHorseName(final1st)}（${final1st}番）がじわじわと外から押し上げてくる！これが本当の末脚だ！！`,
+        `中団から猛追！${final1st}番 ${getHorseName(final1st)} がものすごい勢いで前を飲み込みにかかる！！`,
+    ];
+    const finalLines = [
+        `最終直線！${getHorseName(final1st)}（${final1st}番）が完全に前へ出た！！もう誰も止められない！！`,
+        `あとは叩き合いだ！！${final1st}番 ${getHorseName(final1st)} が先頭！！逃げ切れ！！`,
+        `${getHorseName(final1st)}（${final1st}番）が先頭！後続は一歩及ばない！！これは決まったか！！`,
+    ];
+
+    setCommentary("各馬ゲートに入りました。……スタートを待ちます！", "ゲート前");
 
     const interval = setInterval(() => {
         tick++;
-        const progress = tick / TOTAL_TICKS;
         const width = track.clientWidth;
         const height = track.clientHeight;
 
         for (let i = 1; i <= 12; i++) {
             if (finishedHorses.has(i)) continue;
             const rank = order.indexOf(i);
-            const personalFinishTick = TOTAL_TICKS * (0.85 + rank * 0.015);
-            const rawPct = tick / personalFinishTick;
-            
+
+            // ベースの到達予定Tick（最終着順に基づく）
+            const personalFinishTick = TOTAL_TICKS * (0.88 + rank * 0.012);
+            let rawPct = tick / personalFinishTick;
+
+            // ===== 逆転ドラマ演出 =====
+            if (i === midLeader && tick < overturnTick) {
+                // 中盤までmidLeaderを先頭付近に押し上げる
+                rawPct = Math.min(rawPct * 1.18, 0.96);
+            }
+            if (i === final1st && tick < overturnTick) {
+                // 最終勝者は中盤まで少し抑える（後ろから追い上げに見せる）
+                rawPct = rawPct * 0.88;
+            }
+            if (tick >= overturnTick) {
+                // 逆転後：final1stが一気に加速して先頭へ
+                const overProgress = (tick - overturnTick) / (TOTAL_TICKS - overturnTick);
+                if (i === final1st) {
+                    rawPct = Math.min(rawPct * (1 + overProgress * 0.15), 1.02);
+                }
+                if (i === midLeader && rank > 0) {
+                    // midLeaderは徐々に抜かれていく
+                    rawPct = Math.min(rawPct, 0.97 - overProgress * 0.02);
+                }
+            }
+
             let eased = rawPct < 0.5 ? 2 * rawPct * rawPct : 1 - Math.pow(-2 * rawPct + 2, 2) / 2;
-            let p = Math.min(1.0, eased + (Math.random() - 0.5) * 0.006);
+            let p = Math.min(1.0, eased + (Math.random() - 0.5) * 0.005);
             currentProgresses[i] = p;
 
             const pos = getTrackPosition(p, i - 1, width, height);
@@ -1169,31 +1396,40 @@ function runRaceAnimation(order) {
         }
 
         const liveOrder = getLiveRankings(currentProgresses);
-        const leader = liveOrder[0];
-        const second = liveOrder[1];
 
+        // ===== 実況タイミング =====
         if (tick === Math.floor(TOTAL_TICKS * 0.05)) {
-            setCommentary(`ゲートが開いた！ポンと飛び出したのは ${leader}番：${getHorseName(leader)}！好スタートを決めました！`, "スタート");
-        } 
+            setCommentary(startLines[Math.floor(Math.random()*startLines.length)], "スタート");
+        }
         else if (tick === Math.floor(TOTAL_TICKS * 0.25)) {
-            setCommentary(`序盤の展開、先頭を引っ張るのはやはり ${leader}番：${getHorseName(leader)}！すぐ後ろに${second}番：${getHorseName(second)}がぴったりとつけています！`, "序盤");
-        } 
-        else if (tick === Math.floor(TOTAL_TICKS * 0.50)) {
-            setCommentary(`第3コーナーから4コーナーへ！先頭は ${leader}番：${getHorseName(leader)}が死守！しかし中団から一気に集団が押し寄せてくる！`, "中盤");
-        } 
-        else if (tick === Math.floor(TOTAL_TICKS * 0.75)) {
-            const final1st = order[0];
-            setCommentary(`最終直線に入った！！ここで大外から凄まじい脚で ${final1st}番：${getHorseName(final1st)} が差し込んでくる！！前を捉えられるか！？`, "最終直線");
-        } 
-        else if (tick === Math.floor(TOTAL_TICKS * 0.90)) {
-            setCommentary(`残り100を切った！！叩き合いだ！ ${order[0]}番：${getHorseName(order[0])} が完全に抜け出したか！逃げるか！差し切るか！！`, "クライマックス");
+            const second = liveOrder.find(n => n !== midLeader) || liveOrder[1];
+            setCommentary(`序盤は ${midLeader}番 ${getHorseName(midLeader)} が先頭！${second}番 ${getHorseName(second)} が2番手！後続は一団となっています！`, "序盤");
+        }
+        else if (tick === Math.floor(TOTAL_TICKS * 0.45)) {
+            setCommentary(midLines[Math.floor(Math.random()*midLines.length)], "中盤");
+        }
+        else if (tick === overturnTick && !overturnDone) {
+            overturnDone = true;
+            setCommentary(overturnLines[Math.floor(Math.random()*overturnLines.length)], "🔥逆転");
+        }
+        else if (tick === Math.floor(TOTAL_TICKS * 0.80) && overturnDone) {
+            setCommentary(finalLines[Math.floor(Math.random()*finalLines.length)], "最終直線");
+        }
+        else if (tick === Math.floor(TOTAL_TICKS * 0.92)) {
+            const second = liveOrder.find(n => n !== final1st) || order[1];
+            setCommentary(`残り100m！${final1st}番 ${getHorseName(final1st)} 先頭！${second}番 ${getHorseName(second)} が追う！届くか！？届くか！！`, "クライマックス");
         }
 
         if (finishedHorses.size >= 12 || tick >= TOTAL_TICKS + 50) {
             clearInterval(interval);
             isRacing = false;
             document.getElementById('start-btn').disabled = false;
-            setCommentary(`${order[0]}番：${getHorseName(order[0])} が見事に制しました！激しい一戦が終わりました！`, "ゴール");
+            const finishLines = [
+                `${final1st}番 ${getHorseName(final1st)} が見事に制した！！中盤の逆転劇が決まった！激しいレースでした！`,
+                `ゴール！！${getHorseName(final1st)}（${final1st}番）が差し切った！！劇的な逆転勝利！！`,
+                `${final1st}番 ${getHorseName(final1st)}、粘りに粘って完全勝利！見事な末脚でした！！`,
+            ];
+            setCommentary(finishLines[Math.floor(Math.random()*finishLines.length)], "🏆ゴール");
             document.getElementById('race-track').classList.add('finished');
             setTimeout(endRace, 1000);
         }
