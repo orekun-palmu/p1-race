@@ -1256,11 +1256,9 @@ function parseMultiPredict(str) {
 
 function startRace() {
     if (isRacing) return;
-    finalRankings = calcRaceOrder();
-    document.getElementById('res-1st').value = finalRankings[0];
-    document.getElementById('res-2nd').value = finalRankings[1];
-    document.getElementById('res-3rd').value = finalRankings[2];
-    runRaceAnimation(finalRankings);
+    // 着順はアニメーション完了時に確定するので事前セットしない
+    const scoreOrder = calcRaceOrder();
+    runRaceAnimation(scoreOrder);
 }
 
 function startRaceWithResult() {
@@ -1273,8 +1271,8 @@ function startRaceWithResult() {
     }
     let remaining = Array.from({length:12}, (_,i)=>i+1).filter(n=>n!==r1&&n!==r2&&n!==r3);
     remaining.sort(() => Math.random() - 0.5);
-    finalRankings = [r1, r2, r3, ...remaining];
-    runRaceAnimation(finalRankings);
+    const fixedOrder = [r1, r2, r3, ...remaining];
+    runRaceAnimation(fixedOrder);
 }
 
 function getLiveRankings(currentProgresses) {
@@ -1301,6 +1299,7 @@ function runRaceAnimation(order) {
     const TOTAL_TICKS = RACE_DURATION_MS / TICK_MS;
     const track = document.getElementById('race-track');
     const finishedHorses = new Set();
+    const finishOrder = []; // ← ゴールした順番を記録
     let tick = 0;
     let currentProgresses = {};
     for (let i = 1; i <= 12; i++) currentProgresses[i] = 0;
@@ -1395,6 +1394,10 @@ function runRaceAnimation(order) {
         }
     };
 
+    // 各馬の速度倍率（パターンで変化させる）
+    const speedMult = {};
+    for (let i = 1; i <= 12; i++) speedMult[i] = 1.0;
+
     setCommentary("各馬ゲートに入りました。……スタートを待ちます！", "ゲート前");
 
     const interval = setInterval(() => {
@@ -1406,41 +1409,40 @@ function runRaceAnimation(order) {
             if (finishedHorses.has(i)) continue;
             const rank = order.indexOf(i);
             const personalFinishTick = TOTAL_TICKS * (0.88 + rank * 0.012);
-            let rawPct = tick / personalFinishTick;
+            const baseSpeed = 1.0 / personalFinishTick; // 1tickあたりの基本進み量
 
-            // ===== パターン別の位置補正 =====
+            // ===== パターン別の速度倍率を毎tickセット =====
+            let mult = 1.0;
+            const pct = tick / TOTAL_TICKS; // レース全体の進行率
+
             if (pattern === 'runaway') {
-                // 勝ち馬がずっと先頭、差は広がる一方
-                if (i === final1st) rawPct = Math.min(rawPct * 1.08, 1.02);
+                if (i === final1st) mult = 1.08;
 
             } else if (pattern === 'sashi') {
-                // midLeaderが前半リード、final1stが終盤差す
-                if (i === midLeader && tick < overturnTick) rawPct = Math.min(rawPct * 1.12, 0.97);
-                if (i === final1st && tick < overturnTick) rawPct = rawPct * 0.91;
-                if (tick >= overturnTick) {
-                    const op = (tick - overturnTick) / (TOTAL_TICKS - overturnTick);
-                    if (i === final1st) rawPct = Math.min(rawPct * (1 + op * 0.10), 1.02);
-                    if (i === midLeader) rawPct = Math.min(rawPct, 0.98 - op * 0.015);
+                if (i === midLeader) {
+                    mult = pct < 0.7 ? 1.12 : (pct < 0.85 ? 0.95 : 0.90); // 終盤失速
+                }
+                if (i === final1st) {
+                    mult = pct < 0.6 ? 0.93 : (pct < 0.75 ? 1.05 : 1.12); // 終盤加速
                 }
 
             } else if (pattern === 'overturn') {
-                // midLeaderが前半を大きくリード、final1stが後方から一気
-                if (i === midLeader && tick < overturnTick) rawPct = Math.min(rawPct * 1.20, 0.97);
-                if (i === final1st && tick < overturnTick) rawPct = rawPct * 0.82;
-                if (tick >= overturnTick) {
-                    const op = (tick - overturnTick) / (TOTAL_TICKS - overturnTick);
-                    if (i === final1st) rawPct = Math.min(rawPct * (1 + op * 0.18), 1.02);
-                    if (i === midLeader) rawPct = Math.min(rawPct, 0.97 - op * 0.025);
+                if (i === midLeader) {
+                    mult = pct < (overturnTick/TOTAL_TICKS) ? 1.18 : 0.88; // 逆転後失速
+                }
+                if (i === final1st) {
+                    mult = pct < (overturnTick/TOTAL_TICKS) ? 0.85 : 1.20; // 逆転後爆加速
                 }
 
             } else if (pattern === 'photo') {
-                // 1着と2着がほぼ同ペースで並走
-                if (i === final1st) rawPct = rawPct * 1.005;
-                if (i === final2nd) rawPct = rawPct * 0.998; // わずかに遅い
+                if (i === final1st)  mult = 1.004;
+                if (i === final2nd)  mult = 1.002;
             }
 
-            let eased = rawPct < 0.5 ? 2 * rawPct * rawPct : 1 - Math.pow(-2 * rawPct + 2, 2) / 2;
-            let p = Math.min(1.0, eased + (Math.random() - 0.5) * 0.005);
+            // 速度から位置を積算（前の位置に加算するだけ→絶対に巻き戻らない）
+            const prev = currentProgresses[i] || 0;
+            const step = baseSpeed * mult + (Math.random() - 0.5) * 0.0015;
+            const p = Math.min(1.0, prev + Math.max(0, step)); // 必ず前進のみ
             currentProgresses[i] = p;
 
             const pos = getTrackPosition(p, i - 1, width, height);
@@ -1449,7 +1451,13 @@ function runRaceAnimation(order) {
                 sprite.style.left = `${pos.x}px`;
                 sprite.style.top = `${pos.y}px`;
             }
-            if (p >= 1.0) { finishedHorses.add(i); sprite.classList.add('finished'); }
+            if (p >= 1.0) {
+                if (!finishedHorses.has(i)) {
+                    finishedHorses.add(i);
+                    finishOrder.push(i); // ← ゴール順に追加
+                    sprite.classList.add('finished');
+                }
+            }
         }
 
         const L = LINES[pattern];
@@ -1473,6 +1481,20 @@ function runRaceAnimation(order) {
             clearInterval(interval);
             isRacing = false;
             document.getElementById('start-btn').disabled = false;
+
+            // 未ゴール馬を現在位置順に並べて補完
+            const remaining = [];
+            for (let i = 1; i <= 12; i++) {
+                if (!finishedHorses.has(i)) remaining.push(i);
+            }
+            remaining.sort((a,b) => (currentProgresses[b]||0) - (currentProgresses[a]||0));
+            finalRankings = [...finishOrder, ...remaining];
+
+            // 結果フィールドに反映
+            document.getElementById('res-1st').value = finalRankings[0];
+            document.getElementById('res-2nd').value = finalRankings[1];
+            document.getElementById('res-3rd').value = finalRankings[2];
+
             setCommentary(pick(L.goal), "🏆ゴール");
             document.getElementById('race-track').classList.add('finished');
             setTimeout(endRace, 1000);
