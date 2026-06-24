@@ -1302,46 +1302,98 @@ function runRaceAnimation(order) {
     const track = document.getElementById('race-track');
     const finishedHorses = new Set();
     let tick = 0;
-
-    // --- 逆転ドラマ設定 ---
-    const final1st = order[0];
-    // 中盤リーダー：本命とは別の馬が一時先頭に立つ（逆転演出用）
-    const midLeaderCandidates = order.slice(1, 6); // 2〜6着馬から選ぶ
-    const midLeader = midLeaderCandidates[Math.floor(Math.random() * midLeaderCandidates.length)];
-    // 逆転が起きる地点（60〜80%の間）
-    const overturnTick = Math.floor(TOTAL_TICKS * (0.60 + Math.random() * 0.15));
-    let overturnDone = false;
-
-    // 各馬の進行状況を管理（中盤で意図的にmidLeaderを前に出す）
     let currentProgresses = {};
-    for(let i=1; i<=12; i++) currentProgresses[i] = 0;
+    for (let i = 1; i <= 12; i++) currentProgresses[i] = 0;
+
+    const final1st = order[0];
+    const final2nd = order[1];
+    const n1 = getHorseName(final1st);
+    const n2 = getHorseName(final2nd);
+
+    // ===== レースパターンをランダムに決定 =====
+    // 0:逃げ切り  1:差し  2:逆転(追い込み)  3:叩き合い接戦
+    const PATTERNS = ['runaway', 'sashi', 'overturn', 'photo'];
+    const pattern = PATTERNS[Math.floor(Math.random() * PATTERNS.length)];
+
+    // パターン別の演出変数
+    let midLeader, overturnTick;
+    if (pattern === 'runaway') {
+        // 逃げ切り：勝ち馬がずっと先頭
+        midLeader = final1st;
+        overturnTick = null;
+    } else if (pattern === 'sashi') {
+        // 差し：中団から終盤に差してくる（逆転より緩やか）
+        midLeader = order[Math.floor(Math.random() * 3) + 1]; // 2〜4着馬が序盤先頭
+        overturnTick = Math.floor(TOTAL_TICKS * (0.72 + Math.random() * 0.08));
+    } else if (pattern === 'overturn') {
+        // 追い込み逆転：後方から一気に差し切る
+        midLeader = order[Math.floor(Math.random() * 4) + 1];
+        overturnTick = Math.floor(TOTAL_TICKS * (0.60 + Math.random() * 0.12));
+    } else {
+        // 叩き合い：2頭が序盤から接戦、最後まで競る
+        midLeader = final2nd; // 2着馬が並走
+        overturnTick = null;
+    }
 
     function setCommentary(text, tag = "実況") {
         document.getElementById('commentary-box').innerHTML = `<span class="phase-tag">${tag}</span>${text}`;
     }
+    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-    // 実況フレーバーテキスト（バリエーション）
-    const startLines = [
-        `ゲートが開いた！真っ先に飛び出したのは ${getHorseName(midLeader)}（${midLeader}番）！先手を取りにきた！`,
-        `スタート！${midLeader}番 ${getHorseName(midLeader)} がロケットスタート！一気に先頭へ！`,
-        `好スタート！${midLeader}番 ${getHorseName(midLeader)} が抜群の出足を見せる！`,
-    ];
-    const midLines = [
-        `中盤、先頭は ${getHorseName(midLeader)}（${midLeader}番）！後続を引き離している！このまま逃げ切るか！？`,
-        `${getHorseName(midLeader)}（${midLeader}番）が力強いペースで先頭！後ろの馬たちが必死に追う！`,
-        `第2コーナー！${midLeader}番 ${getHorseName(midLeader)} が先頭で独走状態！差は2馬身、3馬身！`,
-    ];
-    const overturnLines = [
-        `ここで大外から ${getHorseName(final1st)}（${final1st}番）が猛然と追い上げてきた！！信じられない脚！！`,
-        `後方にいた ${final1st}番 ${getHorseName(final1st)} が一気に加速！先頭に迫る！！逆転か！！`,
-        `${getHorseName(final1st)}（${final1st}番）がじわじわと外から押し上げてくる！これが本当の末脚だ！！`,
-        `中団から猛追！${final1st}番 ${getHorseName(final1st)} がものすごい勢いで前を飲み込みにかかる！！`,
-    ];
-    const finalLines = [
-        `最終直線！${getHorseName(final1st)}（${final1st}番）が完全に前へ出た！！もう誰も止められない！！`,
-        `あとは叩き合いだ！！${final1st}番 ${getHorseName(final1st)} が先頭！！逃げ切れ！！`,
-        `${getHorseName(final1st)}（${final1st}番）が先頭！後続は一歩及ばない！！これは決まったか！！`,
-    ];
+    // ===== パターン別実況テキスト =====
+    const LINES = {
+        runaway: {
+            start:  [`ゲートが開いた！${n1}（${final1st}番）が抜群のスタート！一気に先頭へ！`,
+                     `${final1st}番 ${n1}、ロケットダッシュ！もう先頭に立った！`],
+            mid:    [`${n1}（${final1st}番）が差を広げる！2馬身、3馬身！誰も追いつけないか！？`,
+                     `先頭 ${final1st}番 ${n1}！後続を完全に引き離す独走状態！`],
+            final:  [`最終直線！${n1}（${final1st}番）まだ先頭！この差は縮まらない！`,
+                     `${final1st}番 ${n1} が逃げ切り体勢！後続もう届かない！`],
+            climax: [`残り100m！${n1} 独走！完璧な逃げ切りだ！！`,
+                     `${final1st}番 ${n1}！誰も追いつけない！ぶっちぎりでゴールへ！！`],
+            goal:   [`${final1st}番 ${n1}、完璧な逃げ切り！圧巻のレースでした！！`,
+                     `ぶっちぎり！！${n1}（${final1st}番）が独走でゴール！強すぎる！！`]
+        },
+        sashi: {
+            start:  [`スタート！${getHorseName(midLeader)}（${midLeader}番）が先手！ペースを作りにきた！`,
+                     `ゲートが開く！${midLeader}番 ${getHorseName(midLeader)} が前に出る！`],
+            mid:    [`中盤、先頭は ${getHorseName(midLeader)}（${midLeader}番）！後方には ${n1} の姿！`,
+                     `${midLeader}番 ${getHorseName(midLeader)} が粘るが、${n1}（${final1st}番）が中団でじっとしている！`],
+            final:  [`最終コーナー！${n1}（${final1st}番）が外から押し上げてきた！差し脚が炸裂するか！`,
+                     `ここで ${final1st}番 ${n1} が動いた！直線に向けて一気に加速！`],
+            climax: [`直線！${n1}（${final1st}番）が前を捉えた！差し切ったか！！`,
+                     `残り100m！${final1st}番 ${n1} が鋭く差してくる！届いた！！`],
+            goal:   [`見事な差し切り！${final1st}番 ${n1} が直線で決めました！！`,
+                     `${n1}（${final1st}番）の差し脚が炸裂！完璧な競馬でした！！`]
+        },
+        overturn: {
+            start:  [`スタート！${getHorseName(midLeader)}（${midLeader}番）が飛び出す！${n1} は後方待機！`,
+                     `ゲートオープン！先頭は ${midLeader}番 ${getHorseName(midLeader)}！${final1st}番 ${n1} は後ろから！`],
+            mid:    [`${getHorseName(midLeader)}（${midLeader}番）が依然先頭！しかし後方の ${n1} が徐々に動き始めた！`,
+                     `先頭 ${midLeader}番 ${getHorseName(midLeader)}！後方にいた ${final1st}番 ${n1} がここで仕掛けてきた！！`],
+            overturn:[`大外から ${n1}（${final1st}番）が猛然と追い上げてきた！！信じられない脚！！`,
+                      `後方から ${final1st}番 ${n1} が一気に加速！先頭に迫る！！逆転か！！`,
+                      `${n1}（${final1st}番）が並んだ！抜いた！！劇的な逆転劇が始まった！！`],
+            final:  [`最終直線！${n1}（${final1st}番）が完全に前へ出た！もう誰も止められない！`,
+                     `${final1st}番 ${n1} が先頭！後続は一歩及ばない！！`],
+            climax: [`残り100m！${n1} の追い込みが完成した！！`,
+                     `${final1st}番 ${n1}！最後尾からの大逆転！！ゴールへ向かう！！`],
+            goal:   [`${final1st}番 ${n1} が見事に制した！！後方からの大逆転劇！！`,
+                     `劇的な逆転！！${n1}（${final1st}番）が差し切った！！歓声が上がる！！`]
+        },
+        photo: {
+            start:  [`スタート！${n1}（${final1st}番）と ${n2}（${final2nd}番）が並んで飛び出す！`,
+                     `ゲートオープン！序盤から ${final1st}番 ${n1} と ${final2nd}番 ${n2} の一騎打ち！`],
+            mid:    [`${n1}（${final1st}番）と ${n2}（${final2nd}番）が並んで先頭！熾烈な叩き合い！`,
+                     `中盤も ${final1st}番 ${n1} と ${final2nd}番 ${n2} が譲らない！2頭だけの戦いになってきた！`],
+            final:  [`最終直線！${n1} と ${n2} がほぼ横並び！これは写真判定か！！`,
+                     `直線に入っても ${final1st}番 と ${final2nd}番 が並走！どちらが勝つ！！`],
+            climax: [`ゴール前！${n1} わずかに前に出たか！！接戦！接戦！！`,
+                     `残り50m！${n1}（${final1st}番）か！${n2}（${final2nd}番）か！目が離せない！！`],
+            goal:   [`ゴール！！僅差で ${final1st}番 ${n1} が制した！！${n2} との叩き合いを制しました！`,
+                     `ハナ差！！${n1}（${final1st}番）が ${n2} との死闘を制した！！熱いレースでした！！`]
+        }
+    };
 
     setCommentary("各馬ゲートに入りました。……スタートを待ちます！", "ゲート前");
 
@@ -1353,30 +1405,38 @@ function runRaceAnimation(order) {
         for (let i = 1; i <= 12; i++) {
             if (finishedHorses.has(i)) continue;
             const rank = order.indexOf(i);
-
-            // ベースの到達予定Tick（最終着順に基づく）
             const personalFinishTick = TOTAL_TICKS * (0.88 + rank * 0.012);
             let rawPct = tick / personalFinishTick;
 
-            // ===== 逆転ドラマ演出 =====
-            if (i === midLeader && tick < overturnTick) {
-                // 中盤までmidLeaderを先頭付近に押し上げる
-                rawPct = Math.min(rawPct * 1.18, 0.96);
-            }
-            if (i === final1st && tick < overturnTick) {
-                // 最終勝者は中盤まで少し抑える（後ろから追い上げに見せる）
-                rawPct = rawPct * 0.88;
-            }
-            if (tick >= overturnTick) {
-                // 逆転後：final1stが一気に加速して先頭へ
-                const overProgress = (tick - overturnTick) / (TOTAL_TICKS - overturnTick);
-                if (i === final1st) {
-                    rawPct = Math.min(rawPct * (1 + overProgress * 0.15), 1.02);
+            // ===== パターン別の位置補正 =====
+            if (pattern === 'runaway') {
+                // 勝ち馬がずっと先頭、差は広がる一方
+                if (i === final1st) rawPct = Math.min(rawPct * 1.08, 1.02);
+
+            } else if (pattern === 'sashi') {
+                // midLeaderが前半リード、final1stが終盤差す
+                if (i === midLeader && tick < overturnTick) rawPct = Math.min(rawPct * 1.12, 0.97);
+                if (i === final1st && tick < overturnTick) rawPct = rawPct * 0.91;
+                if (tick >= overturnTick) {
+                    const op = (tick - overturnTick) / (TOTAL_TICKS - overturnTick);
+                    if (i === final1st) rawPct = Math.min(rawPct * (1 + op * 0.10), 1.02);
+                    if (i === midLeader) rawPct = Math.min(rawPct, 0.98 - op * 0.015);
                 }
-                if (i === midLeader && rank > 0) {
-                    // midLeaderは徐々に抜かれていく
-                    rawPct = Math.min(rawPct, 0.97 - overProgress * 0.02);
+
+            } else if (pattern === 'overturn') {
+                // midLeaderが前半を大きくリード、final1stが後方から一気
+                if (i === midLeader && tick < overturnTick) rawPct = Math.min(rawPct * 1.20, 0.97);
+                if (i === final1st && tick < overturnTick) rawPct = rawPct * 0.82;
+                if (tick >= overturnTick) {
+                    const op = (tick - overturnTick) / (TOTAL_TICKS - overturnTick);
+                    if (i === final1st) rawPct = Math.min(rawPct * (1 + op * 0.18), 1.02);
+                    if (i === midLeader) rawPct = Math.min(rawPct, 0.97 - op * 0.025);
                 }
+
+            } else if (pattern === 'photo') {
+                // 1着と2着がほぼ同ペースで並走
+                if (i === final1st) rawPct = rawPct * 1.005;
+                if (i === final2nd) rawPct = rawPct * 0.998; // わずかに遅い
             }
 
             let eased = rawPct < 0.5 ? 2 * rawPct * rawPct : 1 - Math.pow(-2 * rawPct + 2, 2) / 2;
@@ -1389,48 +1449,31 @@ function runRaceAnimation(order) {
                 sprite.style.left = `${pos.x}px`;
                 sprite.style.top = `${pos.y}px`;
             }
-
-            if (p >= 1.0) {
-                finishedHorses.add(i);
-                sprite.classList.add('finished');
-            }
+            if (p >= 1.0) { finishedHorses.add(i); sprite.classList.add('finished'); }
         }
 
-        const liveOrder = getLiveRankings(currentProgresses);
+        const L = LINES[pattern];
 
         // ===== 実況タイミング =====
         if (tick === Math.floor(TOTAL_TICKS * 0.05)) {
-            setCommentary(startLines[Math.floor(Math.random()*startLines.length)], "スタート");
-        }
-        else if (tick === Math.floor(TOTAL_TICKS * 0.25)) {
-            const second = liveOrder.find(n => n !== midLeader) || liveOrder[1];
-            setCommentary(`序盤は ${midLeader}番 ${getHorseName(midLeader)} が先頭！${second}番 ${getHorseName(second)} が2番手！後続は一団となっています！`, "序盤");
-        }
-        else if (tick === Math.floor(TOTAL_TICKS * 0.45)) {
-            setCommentary(midLines[Math.floor(Math.random()*midLines.length)], "中盤");
-        }
-        else if (tick === overturnTick && !overturnDone) {
-            overturnDone = true;
-            setCommentary(overturnLines[Math.floor(Math.random()*overturnLines.length)], "🔥逆転");
-        }
-        else if (tick === Math.floor(TOTAL_TICKS * 0.80) && overturnDone) {
-            setCommentary(finalLines[Math.floor(Math.random()*finalLines.length)], "最終直線");
-        }
-        else if (tick === Math.floor(TOTAL_TICKS * 0.92)) {
-            const second = liveOrder.find(n => n !== final1st) || order[1];
-            setCommentary(`残り100m！${final1st}番 ${getHorseName(final1st)} 先頭！${second}番 ${getHorseName(second)} が追う！届くか！？届くか！！`, "クライマックス");
+            setCommentary(pick(L.start), "スタート");
+        } else if (tick === Math.floor(TOTAL_TICKS * 0.30)) {
+            setCommentary(pick(L.mid), "序盤");
+        } else if (pattern === 'overturn' && overturnTick && tick === overturnTick) {
+            setCommentary(pick(L.overturn), "🔥逆転");
+        } else if (tick === Math.floor(TOTAL_TICKS * 0.72) && pattern !== 'overturn') {
+            setCommentary(pick(L.final), "最終直線");
+        } else if (pattern === 'overturn' && tick === Math.floor(TOTAL_TICKS * 0.82)) {
+            setCommentary(pick(L.final), "最終直線");
+        } else if (tick === Math.floor(TOTAL_TICKS * 0.92)) {
+            setCommentary(pick(L.climax), "クライマックス");
         }
 
         if (finishedHorses.size >= 12 || tick >= TOTAL_TICKS + 50) {
             clearInterval(interval);
             isRacing = false;
             document.getElementById('start-btn').disabled = false;
-            const finishLines = [
-                `${final1st}番 ${getHorseName(final1st)} が見事に制した！！中盤の逆転劇が決まった！激しいレースでした！`,
-                `ゴール！！${getHorseName(final1st)}（${final1st}番）が差し切った！！劇的な逆転勝利！！`,
-                `${final1st}番 ${getHorseName(final1st)}、粘りに粘って完全勝利！見事な末脚でした！！`,
-            ];
-            setCommentary(finishLines[Math.floor(Math.random()*finishLines.length)], "🏆ゴール");
+            setCommentary(pick(L.goal), "🏆ゴール");
             document.getElementById('race-track').classList.add('finished');
             setTimeout(endRace, 1000);
         }
