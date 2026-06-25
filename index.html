@@ -1449,28 +1449,23 @@ function calcPopularityOdds() {
 }
 
 function updateOddsDisplay() {
-    // 単勝：1.5〜10倍、2.0〜5.0が高確率（正規分布風：中心3.5付近）
+    // 単勝：1.5〜10倍、2.0〜5.0高確率（釣鐘分布）
     function randTansho() {
-        // Box-Muller風に中央寄りの値を生成
-        const u = Math.random() + Math.random() + Math.random() - 1.5; // -1.5〜1.5の釣鐘
-        const raw = 3.5 + u * 1.5; // 中心3.5、広がり1.5
-        return Math.round(Math.min(10, Math.max(1.5, raw)) * 10) / 10;
+        const u = Math.random() + Math.random() + Math.random() - 1.5;
+        return Math.round(Math.min(10, Math.max(1.5, 3.5 + u * 1.5)) * 10) / 10;
     }
+
     const tansho = randTansho();
-    const fukushoBase = 10 + Math.random() * 40;     // 10〜50倍
-    const sanrentanBase = 20 + Math.random() * 130;  // 20〜150倍
 
-    currentOdds = {
-        tansho,
-        fukusho:   Math.round(Math.min(50,  Math.max(10, fukushoBase))   * 10) / 10,
-        sanrentan: Math.round(Math.min(150, Math.max(20, sanrentanBase)) * 10) / 10
-    };
+    // 3連複：単勝の3〜8倍の範囲、かつ10〜50倍に収める
+    const fukushoRaw = tansho * (3 + Math.random() * 5);
+    const fukusho = Math.round(Math.min(50, Math.max(10, fukushoRaw)) * 10) / 10;
 
-    // 順序保証：単勝 < 3連複 < 3連単
-    if (currentOdds.fukusho <= currentOdds.tansho)
-        currentOdds.fukusho = Math.min(50, currentOdds.tansho + 1);
-    if (currentOdds.sanrentan <= currentOdds.fukusho)
-        currentOdds.sanrentan = Math.min(150, currentOdds.fukusho + 1);
+    // 3連単：3連複の1.5〜3倍、上限100倍、中心が30〜45倍に来るよう調整
+    const sanrentanRaw = fukusho * (1.5 + Math.random() * 1.5);
+    const sanrentan = Math.round(Math.min(100, Math.max(fukusho + 8, sanrentanRaw)) * 10) / 10;
+
+    currentOdds = { tansho, fukusho, sanrentan };
 
     const el_t = document.getElementById('odds-tansho');
     const el_f = document.getElementById('odds-fukusho');
