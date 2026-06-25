@@ -364,6 +364,58 @@
         .save-name-row label { font-size: 12px; color: #888; white-space: nowrap; }
         .modal-hint { font-size: 12px; color: #666; margin-bottom: 14px; }
 
+        /* ===== 伝説の予想師パネル ===== */
+        .legend-predictor-panel {
+            background: linear-gradient(135deg, #1a1500, #2a2000);
+            border: 2px solid #b8860b;
+            border-radius: 8px;
+            padding: 14px;
+            box-shadow: 0 0 20px rgba(255,215,0,0.15);
+        }
+        .legend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .legend-badge {
+            background: linear-gradient(135deg, #b8860b, #ffd700);
+            color: #000;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 10px;
+        }
+        .legend-pick-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        .legend-pick-correct {
+            background: rgba(255,215,0,0.1);
+            border: 1px solid rgba(255,215,0,0.3);
+        }
+        .legend-pick-decoy {
+            background: rgba(100,100,100,0.1);
+            border: 1px solid rgba(100,100,100,0.3);
+        }
+        .legend-label {
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 7px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+        .legend-label-1st { background: #ffd700; color: #000; }
+        .legend-label-2nd { background: #c0c0c0; color: #000; }
+        .legend-label-3rd { background: #cd7f32; color: #000; }
+        .legend-label-miss { background: #444; color: #aaa; }
+
         /* ===== 予想屋パネル ===== */
         .predictor-panel {
             background: linear-gradient(135deg, #1a1a2e, #16213e);
@@ -555,9 +607,6 @@
                                 <th>瞬発力</th>
                                 <th>パワー</th>
                                 <th>健康</th>
-                                <th>賢さ</th>
-                                <th>精神力</th>
-                                <th>柔軟性</th>
                             </tr>
                         </thead>
                         <tbody id="status-tbody"></tbody>
@@ -574,20 +623,53 @@
                 <button class="predictor-refresh-btn" onclick="generatePredictors()">🎲 予想を更新する</button>
             </div>
 
+            <!-- 課金予想屋：伝説の予想師 -->
+            <div class="panel legend-predictor-panel" id="legend-predictor-panel">
+                <div class="legend-header">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <span style="font-size:22px;">👑</span>
+                        <div>
+                            <div style="font-weight:bold; font-size:1rem; color:#ffd700;">伝説の予想師</div>
+                            <div style="font-size:11px; color:#aaa;">的中率75%・高精度3連予想</div>
+                        </div>
+                        <span class="legend-badge">課金予想屋</span>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <div style="display:flex; align-items:center; gap:5px; font-size:12px;">
+                            <label style="color:#888;">閲覧料金:</label>
+                            <input type="number" id="legend-price" value="500" min="0" style="width:70px; font-size:12px;" placeholder="円">
+                            <span style="color:#888;">円</span>
+                        </div>
+                        <button id="legend-toggle-btn" onclick="toggleLegendPredictor()" style="background: linear-gradient(135deg,#b8860b,#ffd700); color:#000; font-weight:bold; font-size:12px; padding:6px 14px;">🔒 予想を見る</button>
+                    </div>
+                </div>
+                <div id="legend-predictor-content" style="display:none; margin-top:12px;">
+                    <div id="legend-picks-display"></div>
+                </div>
+            </div>
+
             <div class="panel">
                 <div class="flex-between">
                     <h3>② 投票(ベット)管理</h3>
                     <button class="secondary" onclick="addBetRow()">＋ 行を追加</button>
                 </div>
+                <!-- オッズ表示 -->
+                <div id="odds-display-bar" style="background:#111; border:1px solid #2e2e2e; border-radius:6px; padding:10px 14px; margin-bottom:10px; font-size:13px; display:flex; gap:20px; flex-wrap:wrap; align-items:center;">
+                    <span style="color:#888; font-size:11px;">📊 現在のオッズ（人気順変動）</span>
+                    <span>単勝: <strong id="odds-tansho" style="color:var(--accent-gold);">-</strong></span>
+                    <span>3連複: <strong id="odds-fukusho" style="color:var(--accent-gold);">-</strong></span>
+                    <span>3連単: <strong id="odds-sanrentan" style="color:var(--accent-gold);">-</strong></span>
+                    <span style="color:#555; font-size:11px;">※人気1位ほど低オッズ・人気薄ほど高オッズ</span>
+                </div>
                 <div class="table-responsive">
                     <table class="bet-table">
                         <thead>
                             <tr>
-                                <th style="width:25%;">プレイヤー名</th>
-                                <th style="width:15%;">賭け金(円)</th>
-                                <th style="width:20%;">賭け方</th>
-                                <th style="width:25%;">予想(馬番)</th>
-                                <th style="width:15%;">過去連勝数</th>
+                                <th style="width:22%;">プレイヤー名</th>
+                                <th style="width:13%;">賭け金(pt)</th>
+                                <th style="width:18%;">賭け方</th>
+                                <th style="width:22%;">予想(馬番)</th>
+                                <th style="width:12%;">連勝数</th>
                             </tr>
                         </thead>
                         <tbody id="bet-rows-container"></tbody>
@@ -642,6 +724,7 @@
                     3着:<input type="number" id="res-3rd" min="1" max="12" style="width:45px;" value="3">
                 </div>
                 <button class="secondary" onclick="startRaceWithResult()">この着順で開始（裏レース実行）</button>
+                <button onclick="scrollToRaceTrack()" style="background:#1a3a5c; border:1px solid #2980b9; color:#74b9ff;">📺 メインレース画面へ</button>
             </div>
         </div>
     </div>
@@ -658,7 +741,7 @@ const GRADE_CLASS = ['grade-sp','grade-s','grade-ap','grade-a','grade-bp','grade
     'grade-cp','grade-c','grade-dp','grade-d','grade-ep','grade-e',
     'grade-fp','grade-f','grade-gp','grade-g'];
 
-const STAT_NAMES = ['スピード','スタミナ','根性','瞬発力','パワー','健康','賢さ','精神力','柔軟性'];
+const STAT_NAMES = ['スピード','スタミナ','根性','瞬発力','パワー','健康'];
 
 const CONDITION_LIST = [
     { key:'perfect', label:'絶好調', cls:'cond-perfect', boosts:2, boostMult:1.30, drops:0, dropMult:1 },
@@ -999,13 +1082,15 @@ function generateHorseStatus(horseNum) {
 
     if (condition.key === 'devil') {
         const displayStats = { ...baseStats };
-        const changeCnt = Math.floor(Math.random() * 5) + 1;
-        for (let c = 0; c < changeCnt; c++) {
-            const statName = STAT_NAMES[Math.floor(Math.random() * STAT_NAMES.length)];
-            const delta = Math.random() < 0.5 ? -Math.floor(Math.random() * 6) : Math.floor(Math.random() * 6);
-            displayStats[statName] = Math.max(0, Math.min(15, (displayStats[statName] || 0) + delta));
+        // 3〜6種類のステータスをランダムに選んで2〜5ランク上げる
+        const statPool = [...STAT_NAMES];
+        const changeCnt = Math.floor(Math.random() * 4) + 3; // 3〜6種類
+        const shuffled = statPool.sort(() => Math.random() - 0.5).slice(0, changeCnt);
+        for (const statName of shuffled) {
+            const rise = Math.floor(Math.random() * 4) + 2; // 2〜5ランク上昇（グレードは小さいほど強いので減算）
+            displayStats[statName] = Math.max(0, (displayStats[statName] ?? 8) - rise);
         }
-        horseStatuses[horseNum] = { baseStats: displayStats, condition, effectiveStats };
+        horseStatuses[horseNum] = { baseStats: displayStats, condition, effectiveStats: { ...displayStats } };
         return;
     }
 
@@ -1032,6 +1117,15 @@ function generateAllStatus() {
     for (let i = 1; i <= 12; i++) { generateHorseStatus(i); }
     renderStatusTable();
     generatePredictors();
+    updateOddsDisplay();
+    // 伝説の予想師リセット
+    legendPrediction = null;
+    legendPredictorOpen = false;
+    const content = document.getElementById('legend-predictor-content');
+    const btn = document.getElementById('legend-toggle-btn');
+    if (content) content.style.display = 'none';
+    if (btn) { btn.textContent = '🔒 予想を見る'; btn.style.background = 'linear-gradient(135deg,#b8860b,#ffd700)'; btn.style.color = '#000'; }
+    generateLegendPrediction();
 }
 
 function renderStatusTable() {
@@ -1078,8 +1172,6 @@ function calcHorseScore(horseNum) {
     const gut = gradeToVal(es['根性'] ?? 8);
     const pow = gradeToVal(es['パワー'] ?? 8);
     const ins = gradeToVal(es['瞬発力'] ?? 8);
-    const men = gradeToVal(es['精神力'] ?? 8);
-    const wis = gradeToVal(es['賢さ'] ?? 8);
 
     // 調子ボーナス（ステータスとは別に調子自体もスコアに乗せる）
     const condKey = st.condition.key;
@@ -1093,12 +1185,12 @@ function calcHorseScore(horseNum) {
              + pow * (isWetTrack ? 2.0 : 0.8);
 
     if (courseFeatures.uphill) base += pow * 0.8;
-    if (courseFeatures.wind)   base += men * 0.8;
+    if (courseFeatures.wind)   base += gut * 0.8;
 
     base += condBonus * 2;
 
-    // 賢さが高いほど乱数ブレ小さい（安定して走る）
-    const randRange = 30 * (1 - wis / 120);
+    // 乱数ブレ（固定範囲）
+    const randRange = 25;
     base += (Math.random() - 0.5) * randRange * 2;
 
     return Math.max(1, base);
@@ -1167,6 +1259,79 @@ function generatePredictors() {
     });
 }
 
+// ===== 伝説の予想師ロジック =====
+let legendPredictorOpen = false;
+let legendPrediction = null;
+
+function generateLegendPrediction() {
+    // 内部スコアから真の順位を計算（複数回平均）
+    const avgScores = [];
+    for (let i = 1; i <= 12; i++) {
+        let total = 0;
+        for (let t = 0; t < 8; t++) total += calcHorseScore(i);
+        avgScores.push({ num: i, score: total / 8 });
+    }
+    avgScores.sort((a, b) => b.score - a.score);
+
+    // 1着・2着は高精度的中（上位3頭から選ぶ）
+    const correctPool = avgScores.slice(0, 3);
+    const pick1 = correctPool[0];
+    const pick2 = correctPool[Math.floor(Math.random() * 2) + 1] || correctPool[1];
+    // 3着は"ハズレ"→オッズが低い馬（中位5〜8位あたり）
+    const decoyPool = avgScores.slice(4, 8);
+    const pick3 = decoyPool[Math.floor(Math.random() * decoyPool.length)] || avgScores[4];
+
+    legendPrediction = [
+        { ...pick1, label: '1着◎', cls: 'legend-label-1st', correct: true },
+        { ...pick2, label: '2着○', cls: 'legend-label-2nd', correct: true },
+        { ...pick3, label: '3着△', cls: 'legend-label-miss', correct: false }
+    ];
+}
+
+function toggleLegendPredictor() {
+    const content = document.getElementById('legend-predictor-content');
+    const btn = document.getElementById('legend-toggle-btn');
+    legendPredictorOpen = !legendPredictorOpen;
+
+    if (legendPredictorOpen) {
+        if (!legendPrediction) generateLegendPrediction();
+        renderLegendPrediction();
+        content.style.display = 'block';
+        btn.textContent = '🔓 予想を隠す';
+        btn.style.background = 'linear-gradient(135deg,#2d2d2d,#555)';
+        btn.style.color = '#fff';
+    } else {
+        content.style.display = 'none';
+        btn.textContent = '🔒 予想を見る';
+        btn.style.background = 'linear-gradient(135deg,#b8860b,#ffd700)';
+        btn.style.color = '#000';
+    }
+}
+
+function renderLegendPrediction() {
+    const price = parseInt(document.getElementById('legend-price').value) || 0;
+    const display = document.getElementById('legend-picks-display');
+    if (!legendPrediction) return;
+
+    let html = `<div style="font-size:11px; color:#888; margin-bottom:8px;">閲覧料金: <strong style="color:#ffd700;">${price.toLocaleString()}円</strong>（運営が設定した金額）</div>`;
+    html += `<div style="font-size:11px; color:#666; margin-bottom:10px;">※ 1着・2着は高精度予想。3着は参考程度（意図的に外しあり）</div>`;
+
+    legendPrediction.forEach((pick, i) => {
+        const name = getHorseName(pick.num);
+        const cond = horseStatuses[pick.num]?.condition?.label || '-';
+        html += `
+        <div class="legend-pick-row ${pick.correct ? 'legend-pick-correct' : 'legend-pick-decoy'}">
+            <span class="legend-label ${pick.cls}">${pick.label}</span>
+            <strong style="color:${pick.correct ? '#ffd700' : '#aaa'};">${pick.num}番</strong>
+            <span style="font-size:12px; color:#ddd;">${name}</span>
+            <small style="color:#666;">(${cond})</small>
+            ${pick.correct ? '<span style="color:#2ed573; font-size:11px;">✓ 高確率</span>' : '<span style="color:#888; font-size:11px;">△ 参考</span>'}
+        </div>`;
+    });
+
+    display.innerHTML = html;
+}
+
 function buildPrediction(style) {
     const today = document.getElementById('weather-today').value;
     const yesterday = document.getElementById('weather-yesterday').value;
@@ -1226,9 +1391,9 @@ function addBetRow() {
         <td><input type="number" class="bet-amount" placeholder="100" style="width:100%;" min="0"></td>
         <td>
             <select class="bet-type" style="width:100%;">
-                <option value="単勝">単勝 (1.2倍)</option>
-                <option value="3連複">3連複 (1.8倍)</option>
-                <option value="3連単">3連単 (2.5倍)</option>
+                <option value="単勝">単勝</option>
+                <option value="3連複">3連複</option>
+                <option value="3連単">3連単</option>
             </select>
         </td>
         <td><input type="text" class="bet-predict" placeholder="例: 1,2,3" style="width:100%;"></td>
@@ -1237,10 +1402,97 @@ function addBetRow() {
     container.appendChild(tr);
 }
 
+// ===== 変動オッズシステム =====
+// 人気順（スコア順位）から5〜150倍の変動オッズを生成
+let currentOdds = { tansho: 8, fukusho: 20, sanrentan: 50 }; // デフォルト
+
+function calcPopularityOdds() {
+    // スコアから人気順を計算（1位＝人気1位）
+    const scores = [];
+    for (let i = 1; i <= 12; i++) {
+        scores.push({ num: i, score: calcHorseScore(i) });
+    }
+    scores.sort((a, b) => b.score - a.score);
+    // 1位（人気1位）ほどオッズが低い
+    // 人気1位 → 単勝5倍、3連複10倍、3連単20倍
+    // 人気12位 → 単勝50倍、3連複100倍、3連単150倍
+    const rank = scores[0].num; // 一番人気の馬番（現在の生成ステータスから）
+
+    // 複数回スコア計算して平均を取って安定させる
+    const avgScores = [];
+    for (let i = 1; i <= 12; i++) {
+        let total = 0;
+        for (let t = 0; t < 5; t++) total += calcHorseScore(i);
+        avgScores.push({ num: i, score: total / 5 });
+    }
+    avgScores.sort((a, b) => b.score - a.score);
+
+    // 人気1位の馬のスコア比率から変動幅を決める
+    const topScore = avgScores[0].score;
+    const bottomScore = avgScores[11].score;
+    const range = Math.max(topScore - bottomScore, 1);
+
+    // 人気1位ほど低オッズ（5〜150倍の範囲）
+    // 単勝: 5〜50倍, 3連複: 10〜100倍, 3連単: 20〜150倍
+    const ratio = (topScore - avgScores[0].score) / range; // 0=1位, 大きいほど下位
+    const midRatio = 0.5; // 中間値
+
+    // 実際には単純に平均的な人気馬（中位）をベースとして計算
+    const popularFactor = Math.min(1, Math.max(0, midRatio));
+
+    const tansho = Math.round((5 + popularFactor * 45) * 2) / 2;
+    const fukusho = Math.round((10 + popularFactor * 90) * 2) / 2;
+    const sanrentan = Math.round((20 + popularFactor * 130) * 2) / 2;
+
+    currentOdds = { tansho, fukusho, sanrentan };
+    return currentOdds;
+}
+
+function updateOddsDisplay() {
+    // 単勝：1.5〜10倍、2.0〜5.0が高確率（正規分布風：中心3.5付近）
+    function randTansho() {
+        // Box-Muller風に中央寄りの値を生成
+        const u = Math.random() + Math.random() + Math.random() - 1.5; // -1.5〜1.5の釣鐘
+        const raw = 3.5 + u * 1.5; // 中心3.5、広がり1.5
+        return Math.round(Math.min(10, Math.max(1.5, raw)) * 10) / 10;
+    }
+    const tansho = randTansho();
+    const fukushoBase = 10 + Math.random() * 40;     // 10〜50倍
+    const sanrentanBase = 20 + Math.random() * 130;  // 20〜150倍
+
+    currentOdds = {
+        tansho,
+        fukusho:   Math.round(Math.min(50,  Math.max(10, fukushoBase))   * 10) / 10,
+        sanrentan: Math.round(Math.min(150, Math.max(20, sanrentanBase)) * 10) / 10
+    };
+
+    // 順序保証：単勝 < 3連複 < 3連単
+    if (currentOdds.fukusho <= currentOdds.tansho)
+        currentOdds.fukusho = Math.min(50, currentOdds.tansho + 1);
+    if (currentOdds.sanrentan <= currentOdds.fukusho)
+        currentOdds.sanrentan = Math.min(150, currentOdds.fukusho + 1);
+
+    const el_t = document.getElementById('odds-tansho');
+    const el_f = document.getElementById('odds-fukusho');
+    const el_s = document.getElementById('odds-sanrentan');
+    if (el_t) el_t.textContent = currentOdds.tansho.toFixed(1) + '倍';
+    if (el_f) el_f.textContent = currentOdds.fukusho.toFixed(1) + '倍';
+    if (el_s) el_s.textContent = currentOdds.sanrentan.toFixed(1) + '倍';
+}
+
 function calculatePayout(type, amount, isWin, streak) {
     if (!isWin) return 0;
-    let baseOdds = type === "単勝" ? 1.2 : (type === "3連複" ? 1.8 : 2.5);
-    return Math.round((amount * (baseOdds + (streak * 0.2))) / 10) * 10;
+    // 基本オッズ（変動式）
+    let baseOdds;
+    if (type === "単勝")   baseOdds = currentOdds.tansho;
+    else if (type === "3連複") baseOdds = currentOdds.fukusho;
+    else                   baseOdds = currentOdds.sanrentan;
+
+    // 連勝ボーナス: +0.5倍ずつ（例: 0連勝→そのまま、1連勝→+0.5倍、2連勝→+1.0倍）
+    const streakBonus = (streak || 0) * 0.5;
+    const finalOdds = baseOdds + streakBonus;
+
+    return Math.round(amount * finalOdds / 10) * 10;
 }
 
 function parseMultiPredict(str) {
@@ -1259,6 +1511,11 @@ function startRace() {
     // 着順はアニメーション完了時に確定するので事前セットしない
     const scoreOrder = calcRaceOrder();
     runRaceAnimation(scoreOrder);
+}
+
+function scrollToRaceTrack() {
+    const el = document.getElementById('race-track');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function startRaceWithResult() {
@@ -1299,7 +1556,7 @@ function runRaceAnimation(order) {
     const TOTAL_TICKS = RACE_DURATION_MS / TICK_MS;
     const track = document.getElementById('race-track');
     const finishedHorses = new Set();
-    const finishOrder = []; // ← ゴールした順番を記録
+    const finishOrder = [];
     let tick = 0;
     let currentProgresses = {};
     for (let i = 1; i <= 12; i++) currentProgresses[i] = 0;
@@ -1310,27 +1567,21 @@ function runRaceAnimation(order) {
     const n2 = getHorseName(final2nd);
 
     // ===== レースパターンをランダムに決定 =====
-    // 0:逃げ切り  1:差し  2:逆転(追い込み)  3:叩き合い接戦
     const PATTERNS = ['runaway', 'sashi', 'overturn', 'photo'];
     const pattern = PATTERNS[Math.floor(Math.random() * PATTERNS.length)];
 
-    // パターン別の演出変数
     let midLeader, overturnTick;
     if (pattern === 'runaway') {
-        // 逃げ切り：勝ち馬がずっと先頭
         midLeader = final1st;
         overturnTick = null;
     } else if (pattern === 'sashi') {
-        // 差し：中団から終盤に差してくる（逆転より緩やか）
-        midLeader = order[Math.floor(Math.random() * 3) + 1]; // 2〜4着馬が序盤先頭
+        midLeader = order[Math.floor(Math.random() * 3) + 1];
         overturnTick = Math.floor(TOTAL_TICKS * (0.72 + Math.random() * 0.08));
     } else if (pattern === 'overturn') {
-        // 追い込み逆転：後方から一気に差し切る
         midLeader = order[Math.floor(Math.random() * 4) + 1];
         overturnTick = Math.floor(TOTAL_TICKS * (0.60 + Math.random() * 0.12));
     } else {
-        // 叩き合い：2頭が序盤から接戦、最後まで競る
-        midLeader = final2nd; // 2着馬が並走
+        midLeader = final2nd;
         overturnTick = null;
     }
 
@@ -1394,68 +1645,88 @@ function runRaceAnimation(order) {
         }
     };
 
-    // 各馬の速度倍率（パターンで変化させる）
     const speedMult = {};
     for (let i = 1; i <= 12; i++) speedMult[i] = 1.0;
 
     setCommentary("各馬ゲートに入りました。……スタートを待ちます！", "ゲート前");
+
+    // カットイン状態管理
+    let cutinShown = false;
+    let cutinActive = false;
+    let raceFinished = false;
 
     const interval = setInterval(() => {
         tick++;
         const width = track.clientWidth;
         const height = track.clientHeight;
 
-        for (let i = 1; i <= 12; i++) {
-            if (finishedHorses.has(i)) continue;
-            const rank = order.indexOf(i);
-            const personalFinishTick = TOTAL_TICKS * (0.88 + rank * 0.012);
-            const baseSpeed = 1.0 / personalFinishTick; // 1tickあたりの基本進み量
+        // ===== 終盤カットイン（90%地点）=====
+        if (!cutinShown && tick >= Math.floor(TOTAL_TICKS * 0.90)) {
+            cutinShown = true;
+            cutinActive = true;
+            showCutin(n1, final1st);
+        }
 
-            // ===== パターン別の速度倍率を毎tickセット =====
-            let mult = 1.0;
-            const pct = tick / TOTAL_TICKS; // レース全体の進行率
+        // カットイン中は馬の更新を停止（サスペンス演出）
+        if (!cutinActive) {
+            for (let i = 1; i <= 12; i++) {
+                if (finishedHorses.has(i)) continue;
+                const rank = order.indexOf(i);
+                const personalFinishTick = TOTAL_TICKS * (0.88 + rank * 0.004); // 0.012→0.004で着順差を大幅縮小
+                const baseSpeed = 1.0 / personalFinishTick;
 
-            if (pattern === 'runaway') {
-                if (i === final1st) mult = 1.08;
+                let mult = 1.0;
+                const pct = tick / TOTAL_TICKS;
 
-            } else if (pattern === 'sashi') {
-                if (i === midLeader) {
-                    mult = pct < 0.7 ? 1.12 : (pct < 0.85 ? 0.95 : 0.90); // 終盤失速
-                }
-                if (i === final1st) {
-                    mult = pct < 0.6 ? 0.93 : (pct < 0.75 ? 1.05 : 1.12); // 終盤加速
-                }
-
-            } else if (pattern === 'overturn') {
-                if (i === midLeader) {
-                    mult = pct < (overturnTick/TOTAL_TICKS) ? 1.18 : 0.88; // 逆転後失速
-                }
-                if (i === final1st) {
-                    mult = pct < (overturnTick/TOTAL_TICKS) ? 0.85 : 1.20; // 逆転後爆加速
+                // ===== 中盤（40〜65%）で全体的に少しペースダウン =====
+                let midSlowdown = 1.0;
+                if (pct >= 0.40 && pct <= 0.65) {
+                    midSlowdown = 0.88;
                 }
 
-            } else if (pattern === 'photo') {
-                if (i === final1st)  mult = 1.004;
-                if (i === final2nd)  mult = 1.002;
-            }
+                if (pattern === 'runaway') {
+                    if (i === final1st) mult = 1.02; // 微差リード程度に抑える
 
-            // 速度から位置を積算（前の位置に加算するだけ→絶対に巻き戻らない）
-            const prev = currentProgresses[i] || 0;
-            const step = baseSpeed * mult + (Math.random() - 0.5) * 0.0015;
-            const p = Math.min(1.0, prev + Math.max(0, step)); // 必ず前進のみ
-            currentProgresses[i] = p;
+                } else if (pattern === 'sashi') {
+                    if (i === midLeader) {
+                        mult = pct < 0.7 ? 1.03 : (pct < 0.85 ? 0.98 : 0.96);
+                    }
+                    if (i === final1st) {
+                        mult = pct < 0.6 ? 0.97 : (pct < 0.75 ? 1.01 : 1.04);
+                    }
 
-            const pos = getTrackPosition(p, i - 1, width, height);
-            const sprite = document.getElementById(`horse-sprite-${i}`);
-            if (sprite) {
-                sprite.style.left = `${pos.x}px`;
-                sprite.style.top = `${pos.y}px`;
-            }
-            if (p >= 1.0) {
-                if (!finishedHorses.has(i)) {
-                    finishedHorses.add(i);
-                    finishOrder.push(i); // ← ゴール順に追加
-                    sprite.classList.add('finished');
+                } else if (pattern === 'overturn') {
+                    if (i === midLeader) {
+                        mult = pct < (overturnTick/TOTAL_TICKS) ? 1.04 : 0.96;
+                    }
+                    if (i === final1st) {
+                        mult = pct < (overturnTick/TOTAL_TICKS) ? 0.96 : 1.05;
+                    }
+
+                } else if (pattern === 'photo') {
+                    if (i === final1st)  mult = 1.002;
+                    if (i === final2nd)  mult = 1.001;
+                }
+
+                mult *= midSlowdown;
+
+                const prev = currentProgresses[i] || 0;
+                const step = baseSpeed * mult + (Math.random() - 0.5) * 0.0015;
+                const p = Math.min(1.0, prev + Math.max(0, step));
+                currentProgresses[i] = p;
+
+                const pos = getTrackPosition(p, i - 1, width, height);
+                const sprite = document.getElementById(`horse-sprite-${i}`);
+                if (sprite) {
+                    sprite.style.left = `${pos.x}px`;
+                    sprite.style.top = `${pos.y}px`;
+                }
+                if (p >= 1.0) {
+                    if (!finishedHorses.has(i)) {
+                        finishedHorses.add(i);
+                        finishOrder.push(i);
+                        sprite.classList.add('finished');
+                    }
                 }
             }
         }
@@ -1473,16 +1744,16 @@ function runRaceAnimation(order) {
             setCommentary(pick(L.final), "最終直線");
         } else if (pattern === 'overturn' && tick === Math.floor(TOTAL_TICKS * 0.82)) {
             setCommentary(pick(L.final), "最終直線");
-        } else if (tick === Math.floor(TOTAL_TICKS * 0.92)) {
+        } else if (tick === Math.floor(TOTAL_TICKS * 0.89)) {
             setCommentary(pick(L.climax), "クライマックス");
         }
 
-        if (finishedHorses.size >= 12 || tick >= TOTAL_TICKS + 50) {
+        if (!raceFinished && !cutinActive && (finishedHorses.size >= 12 || tick >= TOTAL_TICKS + 50)) {
+            raceFinished = true;
             clearInterval(interval);
             isRacing = false;
             document.getElementById('start-btn').disabled = false;
 
-            // 未ゴール馬を現在位置順に並べて補完
             const remaining = [];
             for (let i = 1; i <= 12; i++) {
                 if (!finishedHorses.has(i)) remaining.push(i);
@@ -1490,7 +1761,6 @@ function runRaceAnimation(order) {
             remaining.sort((a,b) => (currentProgresses[b]||0) - (currentProgresses[a]||0));
             finalRankings = [...finishOrder, ...remaining];
 
-            // 結果フィールドに反映
             document.getElementById('res-1st').value = finalRankings[0];
             document.getElementById('res-2nd').value = finalRankings[1];
             document.getElementById('res-3rd').value = finalRankings[2];
@@ -1500,6 +1770,139 @@ function runRaceAnimation(order) {
             setTimeout(endRace, 1000);
         }
     }, TICK_MS);
+
+    // カットイン終了後にレース再開→完了処理
+    window._raceResumeCallback = function() {
+        cutinActive = false;
+
+        // カットイン後に強制ゴール処理
+        const L = LINES[pattern];
+        function pick2(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+        // 未ゴール馬を現在位置順に並べて補完
+        const remaining = [];
+        for (let i = 1; i <= 12; i++) {
+            if (!finishedHorses.has(i)) remaining.push(i);
+        }
+        remaining.sort((a,b) => (currentProgresses[b]||0) - (currentProgresses[a]||0));
+        finalRankings = [...finishOrder, ...remaining];
+        // 1着は必ず order[0] にする
+        if (!finalRankings.includes(final1st)) finalRankings.unshift(final1st);
+        else {
+            const idx = finalRankings.indexOf(final1st);
+            if (idx !== 0) { finalRankings.splice(idx, 1); finalRankings.unshift(final1st); }
+        }
+
+        document.getElementById('res-1st').value = finalRankings[0];
+        document.getElementById('res-2nd').value = finalRankings[1] || finalRankings[1];
+        document.getElementById('res-3rd').value = finalRankings[2] || finalRankings[2];
+
+        setCommentary(pick2(L.goal), "🏆ゴール");
+        document.getElementById('race-track').classList.add('finished');
+
+        if (!raceFinished) {
+            raceFinished = true;
+            clearInterval(interval);
+            isRacing = false;
+            document.getElementById('start-btn').disabled = false;
+            setTimeout(endRace, 800);
+        }
+    };
+}
+
+// ===== カットイン演出 =====
+function showCutin(horseName, horseNum) {
+    // 既存カットインがあれば削除
+    const old = document.getElementById('race-cutin-overlay');
+    if (old) old.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'race-cutin-overlay';
+    overlay.style.cssText = `
+        position: fixed; inset: 0; z-index: 9999;
+        background: rgba(0,0,0,0.92);
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        animation: cutinFadeIn 0.4s ease;
+    `;
+
+    overlay.innerHTML = `
+        <style>
+            @keyframes cutinFadeIn { from { opacity:0; transform:scale(1.04); } to { opacity:1; transform:scale(1); } }
+            @keyframes cutinTextPulse { 0%,100% { text-shadow: 0 0 20px #ffd700, 0 0 40px #ffd700; } 50% { text-shadow: 0 0 40px #fff, 0 0 80px #ffd700; } }
+            @keyframes cutinBorderAnim { 0% { border-color: #ffd700; } 50% { border-color: #fff; } 100% { border-color: #ffd700; } }
+            .cutin-box {
+                border: 3px solid #ffd700;
+                border-radius: 16px;
+                padding: 32px 40px;
+                text-align: center;
+                max-width: 420px;
+                width: 90%;
+                animation: cutinBorderAnim 1s infinite;
+            }
+            .cutin-main-text {
+                font-size: 1.1rem;
+                color: #fff;
+                margin-bottom: 8px;
+                letter-spacing: 2px;
+            }
+            .cutin-question {
+                font-size: 1.6rem;
+                font-weight: bold;
+                color: #ffd700;
+                animation: cutinTextPulse 1s infinite;
+                line-height: 1.4;
+                margin: 12px 0;
+            }
+            .cutin-sub {
+                font-size: 0.95rem;
+                color: #aaa;
+                margin-top: 8px;
+            }
+            .cutin-reveal-btn {
+                margin-top: 20px;
+                padding: 12px 36px;
+                background: linear-gradient(135deg, #b8860b, #ffd700);
+                color: #000;
+                font-weight: bold;
+                font-size: 1rem;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                letter-spacing: 1px;
+            }
+            .cutin-reveal-btn:hover { background: linear-gradient(135deg, #ffd700, #fff); }
+        </style>
+        <div class="cutin-box">
+            <div style="font-size:2.5rem; margin-bottom:8px;">🏆</div>
+            <div class="cutin-main-text">ここで1位に輝くのは誰だ！</div>
+            <div class="cutin-question">ゴール結果は...！？</div>
+            <div class="cutin-sub">栄光を掴んだ馬はいったい——</div>
+            <button class="cutin-reveal-btn" onclick="revealResult()">▶ 結果を見る！</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+}
+
+function revealResult() {
+    const overlay = document.getElementById('race-cutin-overlay');
+    if (overlay) {
+        overlay.style.animation = 'none';
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.3s';
+        setTimeout(() => overlay.remove(), 300);
+    }
+    if (typeof window._raceResumeCallback === 'function') {
+        window._raceResumeCallback();
+    }
+    // endRace完了後（1秒+余裕）に結果欄へ自動スクロール
+    setTimeout(() => {
+        const resultEl = document.getElementById('result-display');
+        if (resultEl) {
+            resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, 2000);
 }
 
 function endRace() {
@@ -1514,6 +1917,12 @@ function endRace() {
                 <span class="rank-badge rank-3">3着</span> ${h3}番 (${getHorseName(h3)})
             </div>
             <h4 style="margin: 5px 0;">【配当一覧】</h4>
+            <div style="font-size:12px; color:#888; margin-bottom:8px;">
+                今回のオッズ — 単勝: <strong style="color:var(--accent-gold);">${currentOdds.tansho.toFixed(1)}倍</strong>　
+                3連複: <strong style="color:var(--accent-gold);">${currentOdds.fukusho.toFixed(1)}倍</strong>　
+                3連単: <strong style="color:var(--accent-gold);">${currentOdds.sanrentan.toFixed(1)}倍</strong>
+                （連勝毎+0.5倍）
+            </div>
             <ul style="padding-left:15px; font-size:13px; margin-bottom:15px;">
     `;
 
@@ -1558,11 +1967,11 @@ function endRace() {
 
         if (hitAny) {
             hitCount++;
-            resultHtml += `<li>🎉 <strong>${name}</strong> (${type}) → <span style="color:var(--accent-green); font-weight:bold;">${rowWinAmount}円</span></li>`;
-            logEntries.push(`[的中] ${name} (${type}) ${rowTotalBet}円->${rowWinAmount}円`);
+            const streakBonus = currentStreak > 0 ? `（連勝ボーナス+${(currentStreak*0.5).toFixed(1)}倍）` : '';
+            resultHtml += `<li>🎉 <strong>${name}</strong> (${type}) → <span style="color:var(--accent-green); font-weight:bold;">${rowWinAmount}pt</span><small style="color:#888;"> ${streakBonus}</small></li>`;
+            logEntries.push(`[的中] ${name} (${type}) ${rowTotalBet}pt->${rowWinAmount}pt`);
             streakInput.value = currentStreak + 1;
         } else {
-            if (currentStreak >= 1) resultHtml += `<li>残 <strong>${name}</strong> (${type}): 0円</li>`;
             streakInput.value = 0;
         }
     }
