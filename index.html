@@ -593,6 +593,13 @@
                     <h2>🏇 メインレース映像</h2>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                         <button id="fanfare-btn" onclick="playFanfare()" style="background:#1a3a5c; border:1px solid #2980b9; color:#74b9ff;">🎺 ファンファーレ</button>
+                        <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:#888;">
+                            <span>🔊</span>
+                            <input type="range" id="fanfare-volume" min="0" max="100" value="80"
+                                style="width:80px; cursor:pointer; accent-color:var(--accent-gold);"
+                                oninput="setFanfareVolume(this.value)">
+                            <span id="fanfare-volume-label" style="min-width:30px;">80%</span>
+                        </div>
                         <button id="start-btn" onclick="startRace()">▶ レース開始（自動）</button>
                     </div>
                 </div>
@@ -2370,9 +2377,15 @@ function endRace() {
 <script>
 // ===== ファンファーレ再生 =====
 const fanfareAudio = new Audio('sounds/ファンファーレ.mp3');
+fanfareAudio.volume = 0.8;
+
+function setFanfareVolume(val) {
+    fanfareAudio.volume = val / 100;
+    document.getElementById('fanfare-volume-label').textContent = val + '%';
+}
 
 function playFanfare() {
-    fanfareAudio.currentTime = 0; // 最初から再生
+    fanfareAudio.currentTime = 0;
     fanfareAudio.play().catch(() => {});
 }
 
