@@ -1505,7 +1505,7 @@ function removeListener(name) {
 function addPtToListener(name, amount) {
     const data = loadListeners();
     const l = data.find(l => l.name === name);
-    if (l) { l.pt += amount; saveListeners(data); renderListenerTable(); }
+    if (l) { l.pt = Math.max(0, l.pt + amount); saveListeners(data); renderListenerTable(); }
 }
 
 function renderListenerTable() {
@@ -2325,7 +2325,11 @@ function endRace() {
             addPtToListener(name, rowWinAmount);
             refreshBetListenerSelects();
         } else {
+            resultHtml += `<li style="color:#888;">💸 <strong>${name}</strong> (${type}) → <span style="color:#e74c3c;">-${rowTotalBet}pt</span></li>`;
+            logEntries.push(`[外れ] ${name} (${type}) -${rowTotalBet}pt`);
             streakInput.value = 0;
+            addPtToListener(name, -rowTotalBet);
+            refreshBetListenerSelects();
         }
     }
 
