@@ -514,10 +514,32 @@
             <ol>
                 <li><strong>馬名の設定：</strong>「① 出走馬の設定」で12頭の名前を決め、馬ステータスを生成します。</li>
                 <li><strong>レース条件設定：</strong>天候・前日天気・コース距離を選びます。ステータスと合わせて予想の参考に。</li>
-                <li><strong>ベット受付：</strong>リスナーの投票内容を「② 投票(ベット)管理」に入力します。複数点賭けも可能です。</li>
+                <li><strong>ベット受付：</strong>リスナーの投票内容を「② 投票(ベット)管理」に入力します。複数賭けたい場合は行を追加して同じ人を選択してください。</li>
                 <li><strong>レース開始：</strong>「レース開始」を押すと約1〜1分30秒かけてレースが進行し、実況が流れます。</li>
                 <li><strong>結果確認：</strong>ゴール後に着順・配当・ログが自動更新されます。</li>
             </ol>
+
+            <strong>【リスナーpt管理】</strong>
+            <ul>
+                <li>登録したい名前を入力すると、投票管理のドロップダウンで選べるようになります。</li>
+                <li>ギフトでの配布ptがある場合は、pt調整欄に金額を入力して「反映」から加算することが可能です。</li>
+                <li>当選時は自動でリスナーpt管理に反映されるため、手動での操作は不要です。</li>
+            </ul>
+
+            <strong>【オッズについて】</strong>
+            <ul>
+                <li>オッズはステータス生成のたびに変動します。</li>
+                <li>単勝 ＜ 3連複 ＜ 3連単 の順で高くなります。</li>
+                <li>最大オッズは100倍まで跳ね上がります（低確率）。</li>
+                <li>連勝ボーナスとして、的中するたびにオッズが+0.5倍ずつ上乗せされます。</li>
+            </ul>
+
+            <strong>【配信者用裏設定】</strong>
+            <ul>
+                <li>着順を直接指定してレースを開始することができます。</li>
+                <li>指定した着順は参考値であり、3連複などは当たりやすいですが、3連単は指定通りの着順にならない場合があるため確定で当たるわけではありません。</li>
+                <li>「📺 メインレース画面へ」ボタンでレース画面に素早く移動できます。</li>
+            </ul>
         </div>
     </div>
 
@@ -1488,39 +1510,84 @@ function renderListenerTable() {
     if (datalist) {
         datalist.innerHTML = data.map(l => `<option value="${l.name}">`).join('');
     }
-
     if (!tbody) return;
+
+    // 完全にDOMをJSで構築（innerHTML不使用）
+    tbody.replaceChildren();
+
     if (data.length === 0) {
-        tbody.innerHTML = '';
         if (empty) empty.style.display = 'block';
         return;
     }
     if (empty) empty.style.display = 'none';
 
-    // エスケープ関数（名前をdata属性に安全に埋め込む）
-    function esc(s) { return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+    data.forEach((l, idx) => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #222';
 
-    tbody.innerHTML = data.map((l, idx) => {
-        const safeName = l.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-        return `
-        <tr style="border-bottom:1px solid #222;">
-            <td style="padding:6px 8px; font-weight:bold; color:#eee;">${safeName}</td>
-            <td style="padding:6px 8px; text-align:right;">
-                <span style="color:var(--accent-gold); font-weight:bold; font-size:14px;">${l.pt.toLocaleString()}</span>
-                <span style="color:#888; font-size:11px;">pt</span>
-            </td>
-            <td style="padding:4px 8px; text-align:center;">
-                <div style="display:flex; gap:4px; align-items:center; justify-content:center;">
-                    <input type="number" id="ptadj_${idx}" placeholder="±pt" style="width:60px; font-size:11px;"
-                        onkeydown="if(event.key==='Enter'){listenerAdjPt(${idx});return false;}">
-                    <button type="button" onclick="listenerAdjPt(${idx})" style="font-size:11px; padding:3px 7px;">反映</button>
-                </div>
-            </td>
-            <td style="padding:4px 8px; text-align:center;">
-                <button type="button" onclick="listenerDelete(${idx})" style="font-size:11px; padding:3px 8px; background:#3d1a1a; border:1px solid #7f2020; color:#ff6b6b; cursor:pointer;">削除</button>
-            </td>
-        </tr>`;
-    }).join('');
+        // 名前セル
+        const tdName = document.createElement('td');
+        tdName.style.cssText = 'padding:6px 8px; font-weight:bold; color:#eee;';
+        tdName.textContent = l.name;
+
+        // pt表示セル
+        const tdPt = document.createElement('td');
+        tdPt.style.cssText = 'padding:6px 8px; text-align:right;';
+        tdPt.innerHTML = `<span style="color:var(--accent-gold);font-weight:bold;font-size:14px;">${l.pt.toLocaleString()}</span><span style="color:#888;font-size:11px;">pt</span>`;
+
+        // pt調整セル
+        const tdAdj = document.createElement('td');
+        tdAdj.style.cssText = 'padding:4px 8px; text-align:center;';
+        const adjWrap = document.createElement('div');
+        adjWrap.style.cssText = 'display:flex;gap:4px;align-items:center;justify-content:center;';
+        const adjInput = document.createElement('input');
+        adjInput.type = 'number';
+        adjInput.placeholder = '±pt';
+        adjInput.style.cssText = 'width:60px;font-size:11px;';
+        const adjBtn = document.createElement('button');
+        adjBtn.type = 'button';
+        adjBtn.textContent = '反映';
+        adjBtn.style.cssText = 'font-size:11px;padding:3px 7px;cursor:pointer;';
+        adjBtn.addEventListener('click', () => {
+            const val = parseInt(adjInput.value);
+            if (isNaN(val)) return;
+            const d = loadListeners();
+            d[idx].pt = Math.max(0, d[idx].pt + val);
+            saveListeners(d);
+            adjInput.value = '';
+            renderListenerTable();
+            refreshBetListenerSelects();
+        });
+        adjInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter') adjBtn.click();
+        });
+        adjWrap.appendChild(adjInput);
+        adjWrap.appendChild(adjBtn);
+        tdAdj.appendChild(adjWrap);
+
+        // 削除セル
+        const tdDel = document.createElement('td');
+        tdDel.style.cssText = 'padding:4px 8px; text-align:center;';
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.textContent = '削除';
+        delBtn.style.cssText = 'font-size:11px;padding:3px 8px;background:#3d1a1a;border:1px solid #7f2020;color:#ff6b6b;cursor:pointer;';
+        delBtn.addEventListener('click', () => {
+            if (!confirm(`「${l.name}」を削除しますか？`)) return;
+            const d = loadListeners();
+            d.splice(idx, 1);
+            saveListeners(d);
+            renderListenerTable();
+            refreshBetListenerSelects();
+        });
+        tdDel.appendChild(delBtn);
+
+        tr.appendChild(tdName);
+        tr.appendChild(tdPt);
+        tr.appendChild(tdAdj);
+        tr.appendChild(tdDel);
+        tbody.appendChild(tr);
+    });
 }
 
 function listenerDeleteAll() {
@@ -1528,38 +1595,6 @@ function listenerDeleteAll() {
     localStorage.removeItem(LISTENER_KEY);
     renderListenerTable();
     refreshBetListenerSelects();
-}
-
-function listenerDelete(idx) {
-    const data = loadListeners();
-    if (!data[idx]) return;
-    if (!confirm(`「${data[idx].name}」を削除しますか？`)) return;
-    data.splice(idx, 1);
-    saveListeners(data);
-    renderListenerTable();
-    refreshBetListenerSelects();
-}
-
-function listenerAdjPt(idx) {
-    const input = document.getElementById(`ptadj_${idx}`);
-    if (!input) return;
-    const val = parseInt(input.value);
-    if (isNaN(val)) return;
-    const data = loadListeners();
-    if (!data[idx]) return;
-    data[idx].pt = Math.max(0, data[idx].pt + val);
-    saveListeners(data);
-    input.value = '';
-    renderListenerTable();
-    refreshBetListenerSelects();
-}
-
-function applyPtAdj(name) {
-    const el = document.getElementById(`pt-adj-${name}`);
-    const val = parseInt(el.value);
-    if (isNaN(val)) return;
-    updateListenerPt(name, val);
-    el.value = '';
 }
 
 function buildListenerOptions() {
