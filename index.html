@@ -416,6 +416,20 @@
         .legend-label-3rd { background: #cd7f32; color: #000; }
         .legend-label-miss { background: #444; color: #aaa; }
 
+        /* ===== 馬番選択ボタン ===== */
+        .horse-btn { transition: background 0.1s, border-color 0.1s, color 0.1s; }
+        .horse-btn.selected {
+            background: var(--accent-gold) !important;
+            border-color: var(--accent-gold) !important;
+            color: #000 !important;
+            font-weight: bold;
+        }
+        .horse-btn:hover:not(.selected) {
+            background: #333 !important;
+            border-color: #888 !important;
+            color: #fff !important;
+        }
+
         /* ===== 予想屋パネル ===== */
         .predictor-panel {
             background: linear-gradient(135deg, #1a1a2e, #16213e);
@@ -648,6 +662,34 @@
                 </div>
             </div>
 
+            <!-- リスナーpt管理パネル -->
+            <div class="panel" id="listener-panel">
+                <div class="flex-between" style="margin-bottom:10px;">
+                    <h3>👥 リスナーpt管理</h3>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <input type="text" id="new-listener-name" placeholder="リスナー名" style="width:110px; font-size:12px;">
+                        <input type="number" id="new-listener-pt" placeholder="初期pt" value="1000" style="width:70px; font-size:12px;" min="0">
+                        <button onclick="addListener()" style="font-size:12px; padding:5px 10px;">＋ 登録</button>
+                        <button onclick="listenerDeleteAll()" style="font-size:12px; padding:5px 10px; background:#3d1a1a; border:1px solid #7f2020; color:#ff6b6b;">🗑 全削除</button>
+                        <button class="secondary" onclick="toggleListenerPanel()" style="font-size:12px; padding:5px 10px;" id="listener-toggle-btn">▲ 閉じる</button>
+                    </div>
+                </div>
+                <div id="listener-table-wrap">
+                    <table style="width:100%; font-size:12px; border-collapse:collapse;" id="listener-table">
+                        <thead>
+                            <tr style="border-bottom:1px solid #333;">
+                                <th style="text-align:left; padding:5px 8px; width:35%;">リスナー名</th>
+                                <th style="text-align:right; padding:5px 8px; width:25%;">所持pt</th>
+                                <th style="text-align:center; padding:5px 8px; width:25%;">pt調整</th>
+                                <th style="text-align:center; padding:5px 8px; width:15%;">削除</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listener-tbody"></tbody>
+                    </table>
+                    <p id="listener-empty-msg" style="color:#666; font-size:12px; margin:8px 0;">リスナーを登録するとここに表示されます。</p>
+                </div>
+            </div>
+
             <div class="panel">
                 <div class="flex-between">
                     <h3>② 投票(ベット)管理</h3>
@@ -665,11 +707,12 @@
                     <table class="bet-table">
                         <thead>
                             <tr>
-                                <th style="width:22%;">プレイヤー名</th>
-                                <th style="width:13%;">賭け金(pt)</th>
-                                <th style="width:18%;">賭け方</th>
-                                <th style="width:22%;">予想(馬番)</th>
-                                <th style="width:12%;">連勝数</th>
+                                <th style="width:18%;">リスナー</th>
+                                <th style="width:11%;">賭け金(pt)</th>
+                                <th style="width:14%;">賭け方</th>
+                                <th style="width:42%;">予想馬番（複数選択可）</th>
+                                <th style="width:10%;">連勝数</th>
+                                <th style="width:5%;"></th>
                             </tr>
                         </thead>
                         <tbody id="bet-rows-container"></tbody>
@@ -677,6 +720,8 @@
                 </div>
             </div>
         </div>
+        <!-- リスナー名datalist -->
+        <datalist id="listener-datalist"></datalist>
 
         <div style="display: flex; flex-direction: column; gap: 15px;">
             <div class="panel">
@@ -770,6 +815,7 @@ window.onload = function() {
     rollCourseFeatures();
     updateConditionSummary();
     generateAllStatus();
+    renderListenerTable();
     
     window.addEventListener('resize', () => {
         drawTrackStatic();
@@ -1380,24 +1426,292 @@ function buildPrediction(style) {
 function initBets() {
     const container = document.getElementById('bet-rows-container');
     container.innerHTML = '';
-    for (let i = 0; i < 10; i++) { addBetRow(); }
+    for (let i = 0; i < 3; i++) { addBetRow(); }
+}
+
+// ===== リスナーpt管理 =====
+const LISTENER_KEY = 'horseRace_listeners';
+
+function loadListeners() {
+    try { return JSON.parse(localStorage.getItem(LISTENER_KEY) || '[]'); } catch { return []; }
+}
+function saveListeners(data) {
+    localStorage.setItem(LISTENER_KEY, JSON.stringify(data));
+}
+
+function addListener() {
+    const nameEl = document.getElementById('new-listener-name');
+    const ptEl   = document.getElementById('new-listener-pt');
+    const name   = nameEl.value.trim();
+    const pt     = parseInt(ptEl.value) || 0;
+    if (!name) return;
+    const data = loadListeners();
+    if (data.find(l => l.name === name)) { alert(`「${name}」は既に登録されています。`); return; }
+    data.push({ name, pt });
+    saveListeners(data);
+    nameEl.value = '';
+    renderListenerTable();
+    refreshBetListenerSelects();
+}
+
+function updateListenerPt(name, delta) {
+    const data = loadListeners();
+    const l = data.find(l => l.name === name);
+    if (l) { l.pt = Math.max(0, l.pt + delta); saveListeners(data); renderListenerTable(); }
+}
+
+function setListenerPt(name, val) {
+    const data = loadListeners();
+    const l = data.find(l => l.name === name);
+    if (l) { l.pt = Math.max(0, val); saveListeners(data); renderListenerTable(); }
+}
+
+function removeListener(name) {
+    if (!confirm(`「${name}」を削除しますか？`)) return;
+    const data = loadListeners().filter(l => l.name !== name);
+    saveListeners(data);
+    renderListenerTable();
+}
+
+function addPtToListener(name, amount) {
+    const data = loadListeners();
+    const l = data.find(l => l.name === name);
+    if (l) { l.pt += amount; saveListeners(data); renderListenerTable(); }
+}
+
+function renderListenerTable() {
+    const data = loadListeners();
+    const tbody = document.getElementById('listener-tbody');
+    const empty = document.getElementById('listener-empty-msg');
+    const datalist = document.getElementById('listener-datalist');
+
+    if (datalist) {
+        datalist.innerHTML = data.map(l => `<option value="${l.name}">`).join('');
+    }
+
+    if (!tbody) return;
+    if (data.length === 0) {
+        tbody.innerHTML = '';
+        if (empty) empty.style.display = 'block';
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+
+    // エスケープ関数（名前をdata属性に安全に埋め込む）
+    function esc(s) { return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+    tbody.innerHTML = data.map((l, idx) => {
+        const safeName = l.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        return `
+        <tr style="border-bottom:1px solid #222;">
+            <td style="padding:6px 8px; font-weight:bold; color:#eee;">${safeName}</td>
+            <td style="padding:6px 8px; text-align:right;">
+                <span style="color:var(--accent-gold); font-weight:bold; font-size:14px;">${l.pt.toLocaleString()}</span>
+                <span style="color:#888; font-size:11px;">pt</span>
+            </td>
+            <td style="padding:4px 8px; text-align:center;">
+                <div style="display:flex; gap:4px; align-items:center; justify-content:center;">
+                    <input type="number" id="ptadj_${idx}" placeholder="±pt" style="width:60px; font-size:11px;"
+                        onkeydown="if(event.key==='Enter'){listenerAdjPt(${idx});return false;}">
+                    <button type="button" onclick="listenerAdjPt(${idx})" style="font-size:11px; padding:3px 7px;">反映</button>
+                </div>
+            </td>
+            <td style="padding:4px 8px; text-align:center;">
+                <button type="button" onclick="listenerDelete(${idx})" style="font-size:11px; padding:3px 8px; background:#3d1a1a; border:1px solid #7f2020; color:#ff6b6b; cursor:pointer;">削除</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function listenerDeleteAll() {
+    if (!confirm('全リスナーを削除しますか？この操作は取り消せません。')) return;
+    localStorage.removeItem(LISTENER_KEY);
+    renderListenerTable();
+    refreshBetListenerSelects();
+}
+
+function listenerDelete(idx) {
+    const data = loadListeners();
+    if (!data[idx]) return;
+    if (!confirm(`「${data[idx].name}」を削除しますか？`)) return;
+    data.splice(idx, 1);
+    saveListeners(data);
+    renderListenerTable();
+    refreshBetListenerSelects();
+}
+
+function listenerAdjPt(idx) {
+    const input = document.getElementById(`ptadj_${idx}`);
+    if (!input) return;
+    const val = parseInt(input.value);
+    if (isNaN(val)) return;
+    const data = loadListeners();
+    if (!data[idx]) return;
+    data[idx].pt = Math.max(0, data[idx].pt + val);
+    saveListeners(data);
+    input.value = '';
+    renderListenerTable();
+    refreshBetListenerSelects();
+}
+
+function applyPtAdj(name) {
+    const el = document.getElementById(`pt-adj-${name}`);
+    const val = parseInt(el.value);
+    if (isNaN(val)) return;
+    updateListenerPt(name, val);
+    el.value = '';
+}
+
+function buildListenerOptions() {
+    const data = loadListeners();
+    const opts = data.map(l => `<option value="${l.name}">${l.name}（${l.pt.toLocaleString()}pt）</option>`).join('');
+    return `<option value="">-- 選択 --</option>${opts}<option value="__new__">＋ 新規入力</option>`;
+}
+
+function refreshBetListenerSelects() {
+    const opts = buildListenerOptions();
+    document.querySelectorAll('.bet-listener-select').forEach(sel => {
+        const current = sel.value;
+        sel.innerHTML = opts;
+        if ([...sel.options].find(o => o.value === current)) sel.value = current;
+        // pt表示も更新
+        const tr = sel.closest('tr');
+        if (!tr) return;
+        const ptDisp = tr.querySelector('.bet-listener-pt');
+        const data = loadListeners();
+        const l = data.find(l => l.name === sel.value);
+        if (ptDisp) ptDisp.textContent = l ? `${l.pt.toLocaleString()}pt` : '';
+    });
+}
+
+function toggleListenerPanel() {
+    const wrap = document.getElementById('listener-table-wrap');
+    const btn  = document.getElementById('listener-toggle-btn');
+    const hidden = wrap.style.display === 'none';
+    wrap.style.display = hidden ? 'block' : 'none';
+    btn.textContent = hidden ? '▲ 閉じる' : '▼ 開く';
+}
+
+function onBetListenerChange(sel) {
+    const tr = sel.closest('tr');
+    const nameInput = tr.querySelector('.bet-name-manual');
+    const ptDisp = tr.querySelector('.bet-listener-pt');
+    if (sel.value === '__new__') {
+        nameInput.style.display = 'block';
+        nameInput.focus();
+        if (ptDisp) ptDisp.textContent = '';
+    } else {
+        nameInput.style.display = 'none';
+        nameInput.value = '';
+        const data = loadListeners();
+        const l = data.find(l => l.name === sel.value);
+        if (ptDisp) ptDisp.textContent = l ? `${l.pt.toLocaleString()}pt` : '';
+    }
+}
+
+function getBetName(tr) {
+    const sel = tr.querySelector('.bet-listener-select');
+    if (sel.value === '__new__') return tr.querySelector('.bet-name-manual').value.trim();
+    return sel.value;
+}
+
+// 馬番ボタン: 賭け方に応じて選択数を制御
+function onHorseBtn(btn) {
+    const tr = btn.closest('tr');
+    const type = tr.querySelector('.bet-type').value;
+    const maxSel = type === '単勝' ? 1 : 3;
+    const allBtns = tr.querySelectorAll('.horse-btn');
+    const selected = [...allBtns].filter(b => b.classList.contains('selected'));
+
+    if (btn.classList.contains('selected')) {
+        btn.classList.remove('selected');
+    } else {
+        if (selected.length >= maxSel) {
+            // 単勝は1頭だけ→既存を解除して新しいのを選ぶ
+            selected[0].classList.remove('selected');
+        }
+        btn.classList.add('selected');
+    }
+    updateHorseBtnPreview(tr);
+}
+
+function onBetTypeChange(sel) {
+    const tr = sel.closest('tr');
+    const type = sel.value;
+    const maxSel = type === '単勝' ? 1 : 3;
+    const allBtns = tr.querySelectorAll('.horse-btn');
+    const selected = [...allBtns].filter(b => b.classList.contains('selected'));
+    // 選択数が超えていたら後ろから削る
+    while (selected.length > maxSel) selected.pop().classList.remove('selected');
+    updateBtnLabel(tr, type);
+    updateHorseBtnPreview(tr);
+}
+
+function updateBtnLabel(tr, type) {
+    const label = tr.querySelector('.horse-select-hint');
+    if (!label) return;
+    if (type === '単勝') label.textContent = '1頭選択';
+    else if (type === '3連複') label.textContent = '3頭選択（順不同）';
+    else label.textContent = '3頭を1着→2着→3着順に選択';
+}
+
+function updateHorseBtnPreview(tr) {
+    const selected = [...tr.querySelectorAll('.horse-btn.selected')].map(b => b.dataset.num);
+    const preview = tr.querySelector('.horse-select-preview');
+    if (preview) preview.textContent = selected.length ? selected.join(' → ') : '未選択';
+}
+
+function getHorseBtnPredicts(tr) {
+    return [...tr.querySelectorAll('.horse-btn.selected')].map(b => parseInt(b.dataset.num));
+}
+
+function removeBetRow(btn) {
+    btn.closest('tr').remove();
 }
 
 function addBetRow() {
     const container = document.getElementById('bet-rows-container');
     const tr = document.createElement('tr');
+
+    // 馬番1〜12のボタン
+    const horseBtns = Array.from({length:12}, (_,i) => {
+        const n = i+1;
+        return `<button type="button" class="horse-btn" data-num="${n}" onclick="onHorseBtn(this)" style="
+            width:26px; height:26px; font-size:11px; font-weight:bold;
+            background:#1e1e1e; border:1px solid #444; border-radius:4px;
+            color:#ccc; cursor:pointer; padding:0; line-height:26px; text-align:center;
+        ">${n}</button>`;
+    }).join('');
+
     tr.innerHTML = `
-        <td><input type="text" class="bet-name" placeholder="リスナー名" style="width:100%;"></td>
-        <td><input type="number" class="bet-amount" placeholder="100" style="width:100%;" min="0"></td>
-        <td>
-            <select class="bet-type" style="width:100%;">
+        <td style="vertical-align:top; padding:4px;">
+            <select class="bet-listener-select" style="width:100%; font-size:11px; margin-bottom:3px;" onchange="onBetListenerChange(this)">
+                ${buildListenerOptions()}
+            </select>
+            <input type="text" class="bet-name-manual" placeholder="名前を入力" style="width:100%; font-size:11px; display:none;">
+            <div class="bet-listener-pt" style="font-size:10px; color:var(--accent-gold); text-align:right; margin-top:2px;"></div>
+        </td>
+        <td style="vertical-align:top; padding:4px;">
+            <input type="number" class="bet-amount" placeholder="100" style="width:100%;" min="0">
+        </td>
+        <td style="vertical-align:top; padding:4px;">
+            <select class="bet-type" style="width:100%; font-size:11px;" onchange="onBetTypeChange(this)">
                 <option value="単勝">単勝</option>
                 <option value="3連複">3連複</option>
                 <option value="3連単">3連単</option>
             </select>
+            <div class="horse-select-hint" style="font-size:10px; color:#888; margin-top:3px;">1頭選択</div>
         </td>
-        <td><input type="text" class="bet-predict" placeholder="例: 1,2,3" style="width:100%;"></td>
-        <td><input type="number" class="bet-streak" value="0" style="width:100%;" min="0"></td>
+        <td style="vertical-align:top; padding:4px;">
+            <div style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:4px;">${horseBtns}</div>
+            <div style="font-size:11px; color:#aaa;">選択: <span class="horse-select-preview" style="color:var(--accent-gold);">未選択</span></div>
+        </td>
+        <td style="vertical-align:top; padding:4px;">
+            <input type="number" class="bet-streak" value="0" style="width:100%;" min="0">
+        </td>
+        <td style="vertical-align:top; padding:4px; text-align:center;">
+            <button type="button" onclick="removeBetRow(this)" style="font-size:16px; background:none; border:none; color:#ff6b6b; cursor:pointer; line-height:1;">×</button>
+        </td>
     `;
     container.appendChild(tr);
 }
@@ -1926,38 +2240,38 @@ function endRace() {
     let hitCount = 0;
 
     for (let tr of trs) {
-        const nameInput    = tr.querySelector('.bet-name');
         const amountInput  = tr.querySelector('.bet-amount');
         const typeSelect   = tr.querySelector('.bet-type');
-        const predictInput = tr.querySelector('.bet-predict');
         const streakInput  = tr.querySelector('.bet-streak');
 
-        if (!nameInput || !amountInput || !nameInput.value.trim() || !amountInput.value) continue;
+        if (!amountInput || !amountInput.value) continue;
 
-        const name = nameInput.value.trim();
+        const name = getBetName(tr);
+        if (!name) continue;
+
         const amountPerPoint = parseInt(amountInput.value);
         const type = typeSelect.value;
-        const multiPredicts = parseMultiPredict(predictInput.value);
+        const selectedNums = getHorseBtnPredicts(tr); // ボタン選択結果
         const currentStreak = parseInt(streakInput.value) || 0;
 
-        if (multiPredicts.length === 0) continue;
+        if (selectedNums.length === 0) continue;
 
-        let rowTotalBet = amountPerPoint * multiPredicts.length;
+        // 選択馬番を1つの予想配列として扱う
+        const predictArr = selectedNums;
+        let rowTotalBet = amountPerPoint;
         let rowWinAmount = 0;
         let hitAny = false;
 
-        for (const predictArr of multiPredicts) {
-            let isWin = false;
-            if (type === "単勝" && predictArr.length > 0 && predictArr[0] === h1) isWin = true;
-            else if (type === "3連複" && predictArr.length === 3) {
-                if ([h1,h2,h3].sort().join(',') === [...predictArr].sort().join(',')) isWin = true;
-            } else if (type === "3連単" && predictArr.length === 3) {
-                if (predictArr[0]===h1 && predictArr[1]===h2 && predictArr[2]===h3) isWin = true;
-            }
-            if (isWin) {
-                hitAny = true;
-                rowWinAmount += calculatePayout(type, amountPerPoint, true, currentStreak);
-            }
+        let isWin = false;
+        if (type === "単勝" && predictArr.length >= 1 && predictArr[0] === h1) isWin = true;
+        else if (type === "3連複" && predictArr.length === 3) {
+            if ([h1,h2,h3].sort().join(',') === [...predictArr].sort().join(',')) isWin = true;
+        } else if (type === "3連単" && predictArr.length === 3) {
+            if (predictArr[0]===h1 && predictArr[1]===h2 && predictArr[2]===h3) isWin = true;
+        }
+        if (isWin) {
+            hitAny = true;
+            rowWinAmount = calculatePayout(type, amountPerPoint, true, currentStreak);
         }
 
         if (hitAny) {
@@ -1966,6 +2280,8 @@ function endRace() {
             resultHtml += `<li>🎉 <strong>${name}</strong> (${type}) → <span style="color:var(--accent-green); font-weight:bold;">${rowWinAmount}pt</span><small style="color:#888;"> ${streakBonus}</small></li>`;
             logEntries.push(`[的中] ${name} (${type}) ${rowTotalBet}pt->${rowWinAmount}pt`);
             streakInput.value = currentStreak + 1;
+            addPtToListener(name, rowWinAmount);
+            refreshBetListenerSelects();
         } else {
             streakInput.value = 0;
         }
