@@ -1658,20 +1658,31 @@ function getBetName(tr) {
 }
 
 // 馬番ボタン: 賭け方に応じて選択数を制御
+// クリックした順序を data-order に記録し、着順が意味を持つ3連単などで
+// 「番号の若い順」に自動整列されてしまわないようにする
 function onHorseBtn(btn) {
     const tr = btn.closest('tr');
     const type = tr.querySelector('.bet-type').value;
     const maxSel = type === '単勝' ? 1 : 3;
     const allBtns = tr.querySelectorAll('.horse-btn');
-    const selected = [...allBtns].filter(b => b.classList.contains('selected'));
+    // クリックされた順（data-order昇順）に並べる
+    const selected = [...allBtns]
+        .filter(b => b.classList.contains('selected'))
+        .sort((a, b) => parseInt(a.dataset.order) - parseInt(b.dataset.order));
 
     if (btn.classList.contains('selected')) {
         btn.classList.remove('selected');
+        delete btn.dataset.order;
     } else {
         if (selected.length >= maxSel) {
-            // 単勝は1頭だけ→既存を解除して新しいのを選ぶ
-            selected[0].classList.remove('selected');
+            // 上限に達している場合は「最初にクリックしたもの」を解除して新しいのを選ぶ
+            const oldest = selected[0];
+            oldest.classList.remove('selected');
+            delete oldest.dataset.order;
         }
+        const counter = (parseInt(tr.dataset.orderCounter) || 0) + 1;
+        tr.dataset.orderCounter = counter;
+        btn.dataset.order = counter;
         btn.classList.add('selected');
     }
     updateHorseBtnPreview(tr);
@@ -1682,9 +1693,16 @@ function onBetTypeChange(sel) {
     const type = sel.value;
     const maxSel = type === '単勝' ? 1 : 3;
     const allBtns = tr.querySelectorAll('.horse-btn');
-    const selected = [...allBtns].filter(b => b.classList.contains('selected'));
-    // 選択数が超えていたら後ろから削る
-    while (selected.length > maxSel) selected.pop().classList.remove('selected');
+    // クリックされた順（data-order昇順）に並べる
+    const selected = [...allBtns]
+        .filter(b => b.classList.contains('selected'))
+        .sort((a, b) => parseInt(a.dataset.order) - parseInt(b.dataset.order));
+    // 選択数が超えていたら「後からクリックしたもの」から削る
+    while (selected.length > maxSel) {
+        const last = selected.pop();
+        last.classList.remove('selected');
+        delete last.dataset.order;
+    }
     updateBtnLabel(tr, type);
     updateHorseBtnPreview(tr);
 }
@@ -1698,13 +1716,17 @@ function updateBtnLabel(tr, type) {
 }
 
 function updateHorseBtnPreview(tr) {
-    const selected = [...tr.querySelectorAll('.horse-btn.selected')].map(b => b.dataset.num);
+    const selected = [...tr.querySelectorAll('.horse-btn.selected')]
+        .sort((a, b) => parseInt(a.dataset.order) - parseInt(b.dataset.order))
+        .map(b => b.dataset.num);
     const preview = tr.querySelector('.horse-select-preview');
     if (preview) preview.textContent = selected.length ? selected.join(' → ') : '未選択';
 }
 
 function getHorseBtnPredicts(tr) {
-    return [...tr.querySelectorAll('.horse-btn.selected')].map(b => parseInt(b.dataset.num));
+    return [...tr.querySelectorAll('.horse-btn.selected')]
+        .sort((a, b) => parseInt(a.dataset.order) - parseInt(b.dataset.order))
+        .map(b => parseInt(b.dataset.num));
 }
 
 function removeBetRow(btn) {
